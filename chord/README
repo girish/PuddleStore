@@ -1,0 +1,27 @@
+team: mm193, dcorrea
+Implementation:
+- We implemented everything that was required. We also did appropriate testing. Each file has 
+its own test folder. 
+- When running cli.go one is able to see that the ring is set correctly and that the finger tables
+are in the correct order. We have several tests to ensure this behavior.
+- Please note that in our tests, we allow you to specify the number of nodes. If you
+specify a very high number of nodes, the possibility of having duplicates increases. This the yields errors
+in the lookup and in the finger tables. We throw an error when a node finds about it in "join." However,
+there is another case in which this can happen one is not able to throw an error. This situation
+arises when two nodes with the same id join in a very short time interval. If it happens at the right time and
+the ring is not stabilized before the second node joins then two nodes with the same id can be located in 
+the table. When this happens lookup fails and the finger entries located with these duplicates are wrong. There 
+was a Piazza post about this so we are mentioning it in our README. 
+Bugs:
+- No known bugs.
+- As far as we know we have implemented everything correctly and the errors
+that occur are those related to the latency of the network (i.e. keys not
+being available because they are being transfered) or because of 
+duplicates in the ring(as described above)
+
+Note on recent Piazza clarification:
+- The clarification (sent on the day the project was due) regarding fixNextFinger was sent to us by another group since we had not seen Piazza throughout the day so we did not implemented what was on the email for the lack of time. We consider that we should not be penalized for that since we were not notified with sufficient time.
+
+Testing:
+
+A lot of our tests are commented out because tcp screams that there are multiple files open if we run all of them at once. Feel free to comment and uncomment as you please. Each testing files checks main functionality related to that file.

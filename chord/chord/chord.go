@@ -1,0 +1,167 @@
+/*                                                                           */
+/*  Brown University, CS138, Spring 2015                                     */
+/*                                                                           */
+/*  Purpose: Chord struct and related functions to create new nodes, etc.    */
+/*                                                                           */
+
+package chord
+
+import (
+	"../../cs138"
+	"fmt"
+	"log"
+	"net"
+	"net/rpc"
+	"sync"
+	"time"
+)
+
+// Number of bits (i.e. M value), assumes <= 128 and divisible by 8
+var KEY_LENGTH = 8
+
+// Turn debug-mode printing on/off
+const DEBUG = true
+
+/* Non-local node representation */
+type RemoteNode struct {
+	Id   []byte
+	Addr string
+}
+
+/* Local node representation */
+type Node struct {
+	Id          []byte            /* Unique Node ID */
+	Listener    net.Listener      /* Node listener socket */
+	Addr        string            /* String of listener address */
+	Successor   *RemoteNode       /* This Node's successor */
+	Predecessor *RemoteNode       /* This Node's predecessor */
+	RemoteSelf  *RemoteNode       /* Remote node of our self */
+	IsShutdown  bool              /* Is node in process of shutting down? */
+	FingerTable []FingerEntry     /* Finger table entries */
+	ftLock      sync.RWMutex      /* RWLock for finger table */
+	dataStore   map[string]string /* Local datastore for this node */
+	dsLock      sync.RWMutex      /* RWLock for datastore */
+	next        int               /* TODO: Not sure if this goes here */
+}
+
+/* Creates a Chord node with a pre-defined ID (useful for testing) */
+func CreateDefinedNode(parent *RemoteNode, definedId []byte) (*Node, error) {
+	node := new(Node)
+	err := node.init(parent, definedId)
+	if err != nil {
+		return nil, err
+	}
+	return node, err
+}
+
+/* Create Chord node with random ID based on listener address */
+func CreateNode(parent *RemoteNode) (*Node, error) {
+	node := new(Node)
+	err := node.init(parent, nil)
+	if err != nil {
+		return nil, err
+	}
+	return node, err
+}
+
+/* Initailize a Chord node, start listener, rpc server, and go routines */
+func (node *Node) init(parent *RemoteNode, definedId []byte) error {
+	if KEY_LENGTH > 128 || KEY_LENGTH%8 != 0 {
+		log.Fatal(fmt.Sprintf("KEY_LENGTH of %v is not supported! Must be <= 128 and divisible by 8", KEY_LENGTH))
+	}
+
+	listener, _, err := cs138.OpenListener()
+	if err != nil {
+		return err
+	}
+
+	node.Id = HashKey(listener.Addr().String())
+	if definedId != nil {
+		node.Id = definedId
+	}
+
+	node.Listener = listener
+	node.Addr = listener.Addr().String()
+	node.IsShutdown = false
+	node.dataStore = make(map[string]string)
+	node.next = 1
+
+	// Populate RemoteNode that points to self
+	node.RemoteSelf = new(RemoteNode)
+	node.RemoteSelf.Id = node.Id
+	node.RemoteSelf.Addr = node.Addr
+
+	// Populate finger table - before it wsa after join
+	//It makes more sense to have it here bc otherwise the successor
+	//set in join gets lost
+	node.initFingerTable()
+
+	// Join this node to the same chord ring as parent
+	err = node.join(parent)
+	if err != nil {
+		return err
+	}
+
+	// Thread 1: start RPC server on this connection
+	rpc.RegisterName(node.Addr, node)
+	go node.startRpcServer()
+
+	// Thread 2: kick off timer to stabilize periodically
+	ticker1 := time.NewTicker(time.Millisecond * 100) //freq
+	go node.stabilize(ticker1)
+
+	// Thread 3: kick off timer to fix finger table periodically
+	ticker2 := time.NewTicker(time.Millisecond * 90) //freq
+	go node.fixNextFinger(ticker2)
+
+	return err
+}
+
+/* Go routine to accept and process RPC requests */
+func (node *Node) startRpcServer() {
+	for {
+		if node.IsShutdown {
+			fmt.Printf("[%v] Shutting down RPC server\n", HashStr(node.Id))
+			return
+		}
+		if conn, err := node.Listener.Accept(); err != nil {
+			if !node.IsShutdown {
+				log.Fatal("accept error: " + err.Error())
+			}
+		} else {
+			go rpc.ServeConn(conn)
+		}
+	}
+}
+
+/* Shutdown a specified Chord node (gracefully) */
+func ShutdownNode(node *Node) {
+	node.IsShutdown = true
+	// Wait for go routines to quit, should be enough time.
+	time.Sleep(time.Millisecond * 2000)
+	node.Listener.Close()
+
+	//We first disconnect ourselves from our own successors and predecessors
+	err := SetSuccessorId_RPC(node.Predecessor, node.Successor)
+	if (err != nil) {
+		Log.Fatal(err)
+	}
+	err = SetPredecessorId_RPC(node.Successor, node.Predecessor)
+	if (err != nil) {
+		Log.Fatal(err)
+	}
+	//We then transfer the keys to our successor
+	(&node.dsLock).Lock()
+	for key, val := range node.dataStore {
+		err := Put_RPC(node.Successor, key, val)
+		if err != nil {
+			//TODO handle error, particularly decide what to do with the ones not transfered
+			(&node.dsLock).Unlock()
+			Log.Fatal(err)
+		}
+		//then we delete it locally
+		delete(node.dataStore, key)
+	}
+	(&node.dsLock).Unlock()
+}
+
