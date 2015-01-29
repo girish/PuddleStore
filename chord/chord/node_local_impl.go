@@ -8,6 +8,7 @@ package chord
 
 import (
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -27,6 +28,16 @@ func (node *Node) stabilize(ticker *time.Ticker) {
 		}
 
 		//TODO students should implement this method
+		succ := node.Successor
+		pred, err := node.findPredecessor(succ.Id)
+		if err != nil {
+			log.Fatal("findPredecessor error: " + err.Error())
+		}
+
+		if Between(pred.Id, node.Id, succ.Id) {
+			node.Successor = pred
+		}
+		//TODO: succ.Notify(node)
 	}
 }
 
@@ -34,6 +45,12 @@ func (node *Node) stabilize(ticker *time.Ticker) {
 func (node *Node) notify(remoteNode *RemoteNode) {
 
 	//TODO students should implement this method
+	if node.Predecessor == nil ||
+		Between(remoteNode.Id, node.Predecessor.Id, node.Id) {
+
+		node.Predecessor = remoteNode
+		// TODO: transfer keys
+	}
 }
 
 // Psuedocode from figure 4 of chord paper

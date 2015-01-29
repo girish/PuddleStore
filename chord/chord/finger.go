@@ -8,31 +8,68 @@ package chord
 
 import (
 	"fmt"
+	"math/big"
 	"time"
 )
 
 /* A single finger table entry */
 type FingerEntry struct {
-	Start []byte       /* ID hash of (n + 2^i) mod (2^m)  */
-	Node  *RemoteNode  /* RemoteNode that Start points to */
+	Start []byte      /* ID hash of (n + 2^i) mod (2^m)  */
+	Node  *RemoteNode /* RemoteNode that Start points to */
 }
 
 /* Create initial finger table that only points to itself, will be fixed later */
 func (node *Node) initFingerTable() {
-	//TODO students should implement this method
+	// Create an array of FingerEntries of length KEY_LENGTH
+	node.FingerTable = make([]FingerEntry, KEY_LENGTH)
+
+	for i := range node.FingerTable {
+		// FingerEntry pointing to node
+		newEntry := FingerEntry{node.Id, node.RemoteSelf}
+		node.FingerTable[i] = newEntry
+	}
 }
 
 /* Called periodically (in a seperate go routine) to fix entries in our finger table. */
 func (node *Node) fixNextFinger(ticker *time.Ticker) {
 	for _ = range ticker.C {
-		//TODO students should implement this method
+		next_hash := fingerMath(node.Id, node.next, KEY_LENGTH)
+		successor, err := node.findSuccessor(next_hash)
+		if err != nil {
+			// TODO: handle error
+		}
+		newEntry := FingerEntry{successor.Id, successor}
+		node.FingerTable[node.next] = newEntry
+		node.next += 1
+		if node.next >= KEY_LENGTH {
+			node.next = 1
+		}
 	}
 }
 
 /* (n + 2^i) mod (2^m) */
 func fingerMath(n []byte, i int, m int) []byte {
-	//TODO students should implement this method
-	return nil
+	two := &big.Int{}
+	two.SetInt64(2)
+
+	N := &big.Int{}
+	N.SetBytes(n)
+
+	// 2^i
+	I := &big.Int{}
+	I.SetInt64(int64(i))
+	I.Exp(two, I, nil)
+
+	// 2^m
+	M := &big.Int{}
+	M.SetInt64(int64(m))
+	M.Exp(two, M, nil)
+
+	result := &big.Int{}
+	result.Add(N, I)
+	result.Mod(result, M)
+
+	return result.Bytes()
 }
 
 /* Print contents of a node's finger table */
