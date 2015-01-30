@@ -47,14 +47,27 @@ func (node *Node) GetSuccessorId(req *RemoteId, reply *IdReply) error {
 		return err
 	}
 	//TODO students should implement this method
-	node.findPrede
-
+	remNode, err := node.findSuccessor(req.Id)
+	if err != nil {
+		reply.Valid = false
+		return err
+	}
+	reply.Id = remNode.Id
+	reply.Addr = remNode.Addr
+	reply.Valid = true
 	return nil
 }
 
 /* RPC */
 func (node *Node) Notify(remoteNode *RemoteNode, reply *RpcOkay) error {
 	//TODO students should implement this method
+	if remoteNode == nil {
+		//TODO: Error
+		reply.Ok = false
+		return error{"remoteNode is invalid."}
+	}
+	node.notify(remoteNode)
+	reply.Ok = true
 	return nil
 }
 
@@ -64,6 +77,14 @@ func (node *Node) FindSuccessor(query *RemoteQuery, reply *IdReply) error {
 		return err
 	}
 	//TODO students should implement this method
+	remNode, err := node.findSuccessor(query.Id)
+	if err != nil {
+		reply.Valid = false
+		return err
+	}
+	reply.Id = remNode.Id
+	reply.Addr = remNode.Addr
+	reply.Valid = true
 	return nil
 }
 
@@ -72,17 +93,18 @@ func (node *Node) ClosestPrecedingFinger(query *RemoteQuery, reply *IdReply) err
 	if err := validateRpc(node, query.FromId); err != nil {
 		return err
 	}
-
 	//TODO students should implement this method
 	//remoteId and fromId
-	for i := KEYLENGTH - 1; i >= 0; i-- {
+	for i := KEY_LENGTH - 1; i >= 0; i-- {
 		if Between(node.FingerTable[i].Id, node.Id, query.Id) {
 			reply.Id = node.FingerTable[i].RemoteNode.Id
 			reply.Addr = node.FingerTable[i].RemoteNode.Addr
 			reply.Valid = true
-
+			return nil
 		}
 	} 
+	reply.Valid = false
 
+	//TODO: return some error
 	return nil
 }

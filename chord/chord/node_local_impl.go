@@ -80,7 +80,6 @@ func (node *Node) findSuccessor(id []byte) (*RemoteNode, error) {
 // Psuedocode from figure 4 of chord paper
 func (node *Node) findPredecessor(id []byte) (*RemoteNode, error) {
 	//TODO students should implement this method
-	return nil, nil
 	curr := node.RemoteSelf
 	succ, err := GetSuccessorId_RPC(curr)
 	for !Between(id, curr.Id, succ.Id) {
