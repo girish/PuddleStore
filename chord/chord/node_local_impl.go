@@ -57,8 +57,11 @@ func (node *Node) notify(remoteNode *RemoteNode) {
 		node.Predecessor = remoteNode
 
 		// TODO: transfer keys
-		TransferKeys_RPC(node.RemoteSelf, remoteNode,
+		err := TransferKeys_RPC(node.RemoteSelf, remoteNode,
 			oldPred.Id)
+		if err != nil {
+			log.Fatal("TransferKeys_RPC error: " + err.Error())
+		}
 	}
 }
 
