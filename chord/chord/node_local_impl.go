@@ -14,8 +14,10 @@ import (
 
 // This node is trying to join an existing ring that a remote node is a part of (i.e., other)
 func (node *Node) join(other *RemoteNode) error {
-	return nil
-	//TODO students should implement this method
+	node.Predecessor = nil
+	succ, err := FindSuccessor_RPC(other, node.Id)
+	node.Successor = succ
+	return err
 }
 
 // Thread 2: Psuedocode from figure 7 of chord paper
@@ -28,16 +30,19 @@ func (node *Node) stabilize(ticker *time.Ticker) {
 		}
 
 		//TODO students should implement this method
-		succ := node.Successor
-		pred, err := node.findPredecessor(succ.Id)
+		pred, err := GetPredecessorId_RPC(node.Successor)
 		if err != nil {
-			log.Fatal("findPredecessor error: " + err.Error())
+			log.Fatal("GetPredecessorId_RPC error: " + err.Error())
 		}
 
-		if Between(pred.Id, node.Id, succ.Id) {
+		if Between(pred.Id, node.Id, node.Successor.Id) {
 			node.Successor = pred
 		}
-		//TODO: succ.Notify(node)
+
+		err = Notify_RPC(node.Successor, node.RemoteSelf)
+		if err != nil {
+			log.Fatal("Notify_RPC error: " + err.Error())
+		}
 	}
 }
 
@@ -48,15 +53,24 @@ func (node *Node) notify(remoteNode *RemoteNode) {
 	if node.Predecessor == nil ||
 		Between(remoteNode.Id, node.Predecessor.Id, node.Id) {
 
+		oldPred := node.Predecessor
 		node.Predecessor = remoteNode
+
 		// TODO: transfer keys
+		TransferKeys_RPC(node.RemoteSelf, remoteNode,
+			oldPred.Id)
 	}
 }
 
 // Psuedocode from figure 4 of chord paper
 func (node *Node) findSuccessor(id []byte) (*RemoteNode, error) {
 	//TODO students should implement this method
-	return nil, nil
+	n, err := node.findPredecessor(id)
+	if err != nil {
+		log.Fatal("findPredecessor error: " + err.Error())
+	}
+
+	return FindSuccessor_RPC(n, id)
 
 }
 
@@ -64,4 +78,12 @@ func (node *Node) findSuccessor(id []byte) (*RemoteNode, error) {
 func (node *Node) findPredecessor(id []byte) (*RemoteNode, error) {
 	//TODO students should implement this method
 	return nil, nil
+	curr := node.RemoteSelf
+	succ, err := GetSuccessorId_RPC(curr)
+	for !Between(id, curr.Id, succ.Id) {
+		curr, err = ClosestPrecedingFinger_RPC(curr, id)
+		// TODO: arreglar mamadas
+		succ, err = GetSuccessorId_RPC(curr)
+	}
+	return curr, err
 }

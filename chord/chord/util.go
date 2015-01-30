@@ -54,12 +54,32 @@ B-\   /-X
 func Between(nodeX, nodeA, nodeB []byte) bool {
 
 	//TODO students should implement this method
-	return false
+	xInt := big.Int{}
+	xInt.SetBytes(nodeX)
+
+	aInt := big.Int{}
+	aInt.SetBytes(nodeA)
+
+	bInt := big.Int{}
+	bInt.SetBytes(nodeB)
+
+	result := (xInt.Cmp(&aInt) == 1 && xInt.Cmp(&bInt) == -1)
+	return result
 }
 
 /* Is X between (A : B] */
 func BetweenRightIncl(nodeX, nodeA, nodeB []byte) bool {
 
 	//TODO students should implement this method
-	return false
+	xInt := big.Int{}
+	xInt.SetBytes(nodeX)
+
+	aInt := big.Int{}
+	aInt.SetBytes(nodeA)
+
+	bInt := big.Int{}
+	bInt.SetBytes(nodeB)
+
+	result := (xInt.Cmp(&aInt) == 1 && xInt.Cmp(&bInt) <= 0)
+	return result
 }
