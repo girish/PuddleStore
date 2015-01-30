@@ -25,7 +25,8 @@ func (node *Node) initFingerTable() {
 
 	for i := range node.FingerTable {
 		// FingerEntry pointing to node
-		newEntry := FingerEntry{node.Id, node.RemoteSelf}
+		newEntry := FingerEntry{fingerMath(node.Id, i, KEY_LENGTH),
+			node.RemoteSelf}
 		node.FingerTable[i] = newEntry
 	}
 }
