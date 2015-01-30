@@ -47,6 +47,8 @@ func (node *Node) GetSuccessorId(req *RemoteId, reply *IdReply) error {
 		return err
 	}
 	//TODO students should implement this method
+	node.findPrede
+
 	return nil
 }
 
@@ -72,5 +74,15 @@ func (node *Node) ClosestPrecedingFinger(query *RemoteQuery, reply *IdReply) err
 	}
 
 	//TODO students should implement this method
+	//remoteId and fromId
+	for i := KEYLENGTH - 1; i >= 0; i-- {
+		if Between(node.FingerTable[i].Id, node.Id, query.Id) {
+			reply.Id = node.FingerTable[i].RemoteNode.Id
+			reply.Addr = node.FingerTable[i].RemoteNode.Addr
+			reply.Valid = true
+
+		}
+	} 
+
 	return nil
 }
