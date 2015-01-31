@@ -17,28 +17,44 @@ import (
 
 /* Get a value in the datastore, provided an abitrary node in the ring */
 func Get(node *Node, key string) (string, error) {
-
-	//TODO students should implement this method
-	return "", nil
+	remNode, err := node.locate(key)
+	
+	return Get_RPC(remNode, key)
 }
 
 /* Put a key/value in the datastore, provided an abitrary node in the ring */
 func Put(node *Node, key string, value string) error {
-
-	//TODO students should implement this method
-	return nil
+	remNode, err := node.locate(key)
+	return Put_RPC(remNode, key, value)
 }
 
 /* Internal helper method to find the appropriate node in the ring */
 func (node *Node) locate(key string) (*RemoteNode, error) {
-
-	//TODO students should implement this method
-	return nil, nil
+	id := HashKey(string)
+	return node.findSuccessor(id)
 }
 
 /* When we discover a new predecessor we may need to transfer some keys to it */
+/*Oh I think I get it, this one is to send */
 func (node *Node) obtainNewKeys() error {
-	//TODO students should implement this method
+	//lock the local db and get the keys
+	node.dsLock.Lock()
+	for key, val := range node.dataStore {
+		keyByte := HashKey(key)
+		if !BetweenRightIncl(keyByte, node.Predecessor.Id, node.Id) {
+			//means we send it to the predecessor
+			err := PUT_RPC(node.Predecessor, key, val)
+			if err != nil {
+				//TODO handle error, particularly decide what to do with the ones not transfered
+				node.dsLock.Unlock()
+				return err
+			}	
+			//then we delete it locally
+			delete(node.dataStore, key)
+		}
+	}
+	//unlock the db
+	node.dsLock.Unlock()
 	return nil
 }
 
@@ -47,12 +63,17 @@ func (node *Node) obtainNewKeys() error {
 /*                                                         */
 
 /* RPC */
+//This is in response to an RPC made onto us.
 func (node *Node) GetLocal(req *KeyValueReq, reply *KeyValueReply) error {
 	if err := validateRpc(node, req.NodeId); err != nil {
 		return err
 	}
-
-	//TODO students should implement this method
+	node.dsLock.RLock()
+	key := req.Key
+	val := node.dataStore[key]
+	reply.Key = key
+	reply.Value = val
+	node.dsLock.RUnlock()
 	return nil
 }
 
@@ -61,18 +82,47 @@ func (node *Node) PutLocal(req *KeyValueReq, reply *KeyValueReply) error {
 	if err := validateRpc(node, req.NodeId); err != nil {
 		return err
 	}
-
-	//TODO students should implement this method
+	node.dsLock.Lock()
+	key := req.Key
+	val := req.Value
+	node.dataStore[key] = val
+	reply.Key = key
+	reply.Value = val
+	node.dsLock.Unlock()
 	return nil
 }
 
-/* RPC */
+/* RPC 
+This function call is called on us as the successor. This is suppose to trigger us to transfer the relevant
+keys back to node*/
 func (node *Node) TransferKeys(req *TransferReq, reply *RpcOkay) error {
 	if err := validateRpc(node, req.NodeId); err != nil {
 		return err
 	}
-
-	//TODO students should implement this method
+	node.dsLock.Lock()
+	for key, val := range node.dataStore {
+		keyByte := HashKey(key)
+		if BetweenRightIncl(keyByte, req.PredId, req.FromId) {
+			//means we send it to the requester, because it belongs to them
+			err := PUT_RPC(node.Predecessor, key, val)
+			if err != nil {
+				//TODO handle error, particularly decide what to do with the ones not transfered
+				node.dsLock.Unlock()
+				reply.Ok = false
+				return err
+			}	
+			//then we delete it locally
+			delete(node.dataStore, key)
+		}
+	}
+	//unlock the db
+	node.dsLock.Unlock()
+	//unlock the db
+	if (err != nil) {
+		reply.Ok = false
+		return err
+	}
+	reply.Ok = true
 	return nil
 }
 
