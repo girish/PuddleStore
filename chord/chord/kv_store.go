@@ -35,7 +35,8 @@ func (node *Node) locate(key string) (*RemoteNode, error) {
 }
 
 /* When we discover a new predecessor we may need to transfer some keys to it */
-/*Oh I think I get it, this one is to send */
+/*Oh I think I get it, this one is to send
+This was eliminated by the TAs because of its redundancy */
 func (node *Node) obtainNewKeys() error {
 	//lock the local db and get the keys
 	node.dsLock.Lock()
@@ -95,6 +96,8 @@ func (node *Node) PutLocal(req *KeyValueReq, reply *KeyValueReply) error {
 /* RPC 
 This function call is called on us as the successor. This is suppose to trigger us to transfer the relevant
 keys back to node*/
+/* Comment from the TAs: Find locally stored keys that are between (predId : fromId],
+ any of these nodes should be moved to fromId */
 func (node *Node) TransferKeys(req *TransferReq, reply *RpcOkay) error {
 	if err := validateRpc(node, req.NodeId); err != nil {
 		return err

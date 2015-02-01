@@ -59,12 +59,29 @@ func (node *Node) GetSuccessorId(req *RemoteId, reply *IdReply) error {
 }
 
 /* RPC */
-func (node *Node) Notify(remoteNode *RemoteNode, reply *RpcOkay) error {
+func (node *Node) SetPredecessorId(req *UpdateReq, reply *RpcOkay) error {
+	if err := validateRpc(node, req.FromId); err != nil {
+		return err
+	}
 	//TODO students should implement this method
-	if remoteNode == nil {
-		//TODO: Error
+	return nil
+}
+
+/* RPC */
+func (node *Node) SetSuccessorId(req *UpdateReq, reply *RpcOkay) error {
+	if err := validateRpc(node, req.FromId); err != nil {
+		return err
+	}
+	//TODO students should implement this method
+	return nil
+}
+
+/* RPC */
+func (node *Node) Notify(req *NotifyReq, reply *RpcOkay) error {
+	//TODO fix this
+	if err := validateRpc(node, req.NodeId); err != nil {
 		reply.Ok = false
-		return error{"remoteNode is invalid."}
+		return err
 	}
 	node.notify(remoteNode)
 	reply.Ok = true

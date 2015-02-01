@@ -123,7 +123,9 @@ func (node *Node) startRpcServer() {
 			return
 		}
 		if conn, err := node.Listener.Accept(); err != nil {
-			log.Fatal("accept error: " + err.Error())
+			if !node.IsShutdown {
+				log.Fatal("accept error: " + err.Error())
+			}
 		} else {
 			go rpc.ServeConn(conn)
 		}
