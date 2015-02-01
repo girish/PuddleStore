@@ -49,6 +49,21 @@ type TransferReq struct {
 	PredId   []byte
 }
 
+type UpdateReq struct {
+	FromId     []byte
+	UpdateId   []byte
+	UpdateAddr string
+}
+
+// NodeId: Intended node to received the request
+// UpdateId: Node that you are wishing to notify about
+type NotifyReq struct {
+	NodeId     []byte
+	NodeAddr   string
+	UpdateId   []byte
+	UpdateAddr string
+}
+
 /* RPC connection map cache */
 var connMap = make(map[string]*rpc.Client)
 
@@ -87,13 +102,60 @@ func GetSuccessorId_RPC(remoteNode *RemoteNode) (*RemoteNode, error) {
 	return rNode, err
 }
 
+/* Set the predecessor ID of a remote node */
+func SetPredecessorId_RPC(remoteNode, newPred *RemoteNode) error {
+	var reply RpcOkay
+	var req UpdateReq
+	req.FromId = remoteNode.Id
+	if newPred != nil {
+		req.UpdateId = newPred.Id
+		req.UpdateAddr = newPred.Addr
+	}
+
+	err := makeRemoteCall(remoteNode, "SetPredecessorId", &req, &reply)
+	if err != nil {
+		return err
+	}
+	if !reply.Ok {
+		return errors.New(fmt.Sprintf("RPC replied not valid from %v", remoteNode.Id))
+	}
+
+	return err
+}
+
+/* Set the successor ID of a remote node */
+func SetSuccessorId_RPC(remoteNode, newSucc *RemoteNode) error {
+	var reply RpcOkay
+	var req UpdateReq
+	req.FromId = remoteNode.Id
+	req.UpdateId = newSucc.Id
+	req.UpdateAddr = newSucc.Addr
+
+	err := makeRemoteCall(remoteNode, "SetSuccessorId", &req, &reply)
+	if err != nil {
+		return err
+	}
+	if !reply.Ok {
+		return errors.New(fmt.Sprintf("RPC replied not valid from %v", remoteNode.Id))
+	}
+
+	return err
+}
+
 /* Notify a remote node that we believe we are its predecessor */
 func Notify_RPC(remoteNode, us *RemoteNode) error {
 	if remoteNode == nil {
 		return errors.New("RemoteNode is empty!")
 	}
 	var reply RpcOkay
-	err := makeRemoteCall(remoteNode, "Notify", us, &reply)
+	var req NotifyReq
+	req.NodeId = remoteNode.Id
+	req.NodeAddr = remoteNode.Addr
+	req.UpdateId = us.Id
+	req.UpdateAddr = us.Addr
+
+	// must send us and intended node
+	err := makeRemoteCall(remoteNode, "Notify", &req, &reply)
 	if !reply.Ok {
 		return errors.New(fmt.Sprintf("RPC replied not valid from %v", remoteNode.Id))
 	}
