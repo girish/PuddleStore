@@ -36,12 +36,6 @@ func (node *Node) locate(key string) (*RemoteNode, error) {
 	return nil, nil
 }
 
-/* When we discover a new predecessor we may need to transfer some keys to it */
-func (node *Node) obtainNewKeys() error {
-	//TODO students should implement this method
-	return nil
-}
-
 /*                                                         */
 /* RPCs to assist with interfacing with the datastore ring */
 /*                                                         */
@@ -67,6 +61,8 @@ func (node *Node) PutLocal(req *KeyValueReq, reply *KeyValueReply) error {
 }
 
 /* RPC */
+/* Find locally stored keys that are between (predId : fromId], any of
+   these nodes should be moved to fromId */
 func (node *Node) TransferKeys(req *TransferReq, reply *RpcOkay) error {
 	if err := validateRpc(node, req.NodeId); err != nil {
 		return err
