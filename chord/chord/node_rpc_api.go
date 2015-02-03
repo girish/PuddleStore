@@ -221,7 +221,7 @@ func Put_RPC(locNode *RemoteNode, key string, value string) error {
 }
 
 /* Inform a successor node (succ) that we now take care of IDs between (predId : node.Id] */
-/* this should trigger the successor node to transfer the relevant keys back 'node'*/
+/* this should trigger the successor node to transfer the relevant keys back 'node'       */
 func TransferKeys_RPC(succ *RemoteNode, node *RemoteNode, predId []byte) error {
 	if succ == nil {
 		return errors.New("RemoteNode is empty!")

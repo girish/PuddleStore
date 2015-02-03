@@ -99,11 +99,15 @@ func (node *Node) PutLocal(req *KeyValueReq, reply *KeyValueReply) error {
 	return nil
 }
 
-/* RPC
+/* RPC OLD
 This function call is called on us as the successor. This is suppose to trigger us to transfer the relevant
 keys back to node*/
 /* Comment from the TAs: Find locally stored keys that are between (predId : fromId],
 any of these nodes should be moved to fromId */
+
+/* RPC */
+/* Find locally stored keys that are between (predId : fromId], any of
+   these nodes should be moved to fromId */
 func (node *Node) TransferKeys(req *TransferReq, reply *RpcOkay) error {
 	if err := validateRpc(node, req.NodeId); err != nil {
 		return err
