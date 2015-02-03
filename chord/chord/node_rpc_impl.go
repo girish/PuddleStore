@@ -83,7 +83,10 @@ func (node *Node) Notify(req *NotifyReq, reply *RpcOkay) error {
 		reply.Ok = false
 		return err
 	}
-	node.notify(remoteNode)
+	remote_node := new(RemoteNode)
+	remote_node.Id = req.UpdateId
+	remote_node.Addr = req.UpdateAddr
+	node.notify(remote_node)
 	reply.Ok = true
 	return nil
 }
@@ -113,13 +116,13 @@ func (node *Node) ClosestPrecedingFinger(query *RemoteQuery, reply *IdReply) err
 	//TODO students should implement this method
 	//remoteId and fromId
 	for i := KEY_LENGTH - 1; i >= 0; i-- {
-		if Between(node.FingerTable[i].Id, node.Id, query.Id) {
-			reply.Id = node.FingerTable[i].RemoteNode.Id
-			reply.Addr = node.FingerTable[i].RemoteNode.Addr
+		if Between(node.FingerTable[i].Node.Id, node.Id, query.Id) {
+			reply.Id = node.FingerTable[i].Node.Id
+			reply.Addr = node.FingerTable[i].Node.Addr
 			reply.Valid = true
 			return nil
 		}
-	} 
+	}
 	reply.Valid = false
 
 	//TODO: return some error

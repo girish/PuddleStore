@@ -141,7 +141,6 @@ func SetSuccessorId_RPC(remoteNode, newSucc *RemoteNode) error {
 	return err
 }
 
-
 /* Notify a remote node that we believe we are its predecessor */
 func Notify_RPC(remoteNode, us *RemoteNode) error {
 	if remoteNode == nil {

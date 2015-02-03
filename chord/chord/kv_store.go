@@ -18,19 +18,25 @@ import (
 /* Get a value in the datastore, provided an abitrary node in the ring */
 func Get(node *Node, key string) (string, error) {
 	remNode, err := node.locate(key)
-	
+	if err != nil {
+		return "", err
+	}
+
 	return Get_RPC(remNode, key)
 }
 
 /* Put a key/value in the datastore, provided an abitrary node in the ring */
 func Put(node *Node, key string, value string) error {
 	remNode, err := node.locate(key)
+	if err != nil {
+		return err
+	}
 	return Put_RPC(remNode, key, value)
 }
 
 /* Internal helper method to find the appropriate node in the ring */
 func (node *Node) locate(key string) (*RemoteNode, error) {
-	id := HashKey(string)
+	id := HashKey(key)
 	return node.findSuccessor(id)
 }
 
@@ -44,12 +50,12 @@ func (node *Node) obtainNewKeys() error {
 		keyByte := HashKey(key)
 		if !BetweenRightIncl(keyByte, node.Predecessor.Id, node.Id) {
 			//means we send it to the predecessor
-			err := PUT_RPC(node.Predecessor, key, val)
+			err := Put_RPC(node.Predecessor, key, val)
 			if err != nil {
 				//TODO handle error, particularly decide what to do with the ones not transfered
 				node.dsLock.Unlock()
 				return err
-			}	
+			}
 			//then we delete it locally
 			delete(node.dataStore, key)
 		}
@@ -93,11 +99,11 @@ func (node *Node) PutLocal(req *KeyValueReq, reply *KeyValueReply) error {
 	return nil
 }
 
-/* RPC 
+/* RPC
 This function call is called on us as the successor. This is suppose to trigger us to transfer the relevant
 keys back to node*/
 /* Comment from the TAs: Find locally stored keys that are between (predId : fromId],
- any of these nodes should be moved to fromId */
+any of these nodes should be moved to fromId */
 func (node *Node) TransferKeys(req *TransferReq, reply *RpcOkay) error {
 	if err := validateRpc(node, req.NodeId); err != nil {
 		return err
@@ -107,24 +113,23 @@ func (node *Node) TransferKeys(req *TransferReq, reply *RpcOkay) error {
 		keyByte := HashKey(key)
 		if BetweenRightIncl(keyByte, req.PredId, req.FromId) {
 			//means we send it to the requester, because it belongs to them
-			err := PUT_RPC(node.Predecessor, key, val)
+			err := Put_RPC(node.Predecessor, key, val)
 			if err != nil {
 				//TODO handle error, particularly decide what to do with the ones not transfered
 				node.dsLock.Unlock()
 				reply.Ok = false
 				return err
-			}	
+			}
 			//then we delete it locally
 			delete(node.dataStore, key)
 		}
 	}
 	//unlock the db
-	node.dsLock.Unlock()
-	//unlock the db
-	if (err != nil) {
-		reply.Ok = false
-		return err
-	}
+	//node.dsLock.Unlock()
+	//if err != nil {
+	//	reply.Ok = false
+	//	return err
+	//}
 	reply.Ok = true
 	return nil
 }
