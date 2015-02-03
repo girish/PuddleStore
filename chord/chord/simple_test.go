@@ -1,8 +1,6 @@
 package chord
 
 import (
-	//"fmt"
-	//"math/big"
 	"testing"
 )
 

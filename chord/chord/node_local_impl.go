@@ -14,6 +14,12 @@ import (
 
 // This node is trying to join an existing ring that a remote node is a part of (i.e., other)
 func (node *Node) join(other *RemoteNode) error {
+
+	// Handle case of "other" being nil (first node on ring).
+	if other == nil {
+		return nil
+	}
+
 	node.Predecessor = nil
 	succ, err := FindSuccessor_RPC(other, node.Id)
 	node.Successor = succ
