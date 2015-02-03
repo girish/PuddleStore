@@ -36,19 +36,22 @@ func (node *Node) stabilize(ticker *time.Ticker) {
 		}
 
 		//TODO students should implement this method
-		pred, err := GetPredecessorId_RPC(node.Successor)
-		if err != nil {
-			log.Fatal("GetPredecessorId_RPC error: " + err.Error())
+		if (node.Successor != nil) {
+			pred, err := GetPredecessorId_RPC(node.Successor)
+			if err != nil {
+				log.Fatal("GetPredecessorId_RPC error: " + err.Error())
+			}
+			if Between(pred.Id, node.Id, node.Successor.Id) {
+				node.Successor = pred
+			}
+			err = Notify_RPC(node.Successor, node.RemoteSelf)
+			if err != nil {
+				log.Fatal("Notify_RPC error: " + err.Error())
+			}
 		}
+		
 
-		if Between(pred.Id, node.Id, node.Successor.Id) {
-			node.Successor = pred
-		}
-
-		err = Notify_RPC(node.Successor, node.RemoteSelf)
-		if err != nil {
-			log.Fatal("Notify_RPC error: " + err.Error())
-		}
+		
 	}
 }
 
