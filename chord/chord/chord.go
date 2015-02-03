@@ -20,7 +20,7 @@ import (
 const KEY_LENGTH = 8
 
 // Turn debug-mode printing on/off
-const DEBUG = false
+const DEBUG = true
 
 /* Non-local node representation */
 type RemoteNode struct {
