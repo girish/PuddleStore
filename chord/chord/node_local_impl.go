@@ -35,19 +35,16 @@ func (node *Node) stabilize(ticker *time.Ticker) {
 			return
 		}
 
-		//TODO students should implement this method
-		if node.Successor != nil {
-			pred, err := GetPredecessorId_RPC(node.Successor)
-			if err != nil {
-				log.Fatal("GetPredecessorId_RPC error: " + err.Error())
-			}
-			if Between(pred.Id, node.Id, node.Successor.Id) {
-				node.Successor = pred
-			}
-			err = Notify_RPC(node.Successor, node.RemoteSelf)
-			if err != nil {
-				log.Fatal("Notify_RPC error: " + err.Error())
-			}
+		pred, err := GetPredecessorId_RPC(node.Successor)
+		if err != nil {
+			log.Fatal("GetPredecessorId_RPC error: " + err.Error())
+		}
+		if Between(pred.Id, node.Id, node.Successor.Id) {
+			node.Successor = pred
+		}
+		err = Notify_RPC(node.Successor, node.RemoteSelf)
+		if err != nil {
+			log.Fatal("Notify_RPC error: " + err.Error())
 		}
 
 	}
@@ -76,11 +73,12 @@ func (node *Node) notify(remoteNode *RemoteNode) {
 func (node *Node) findSuccessor(id []byte) (*RemoteNode, error) {
 	//TODO students should implement this method
 
-	// fmt.Println("este pedo")
-	// fmt.Println("%v --- %v", HashStr(node.Successor.Id), HashStr(id))
+	// Check if id is between me and my immediate successor.
+	// Check if I'm my own successor.
+	// If so, return it.
+	if BetweenRightIncl(id, node.Id, node.Successor.Id) ||
+		EqualIds(node.Successor.Id, node.Id) {
 
-	// Check if id is my immediate successor. If so, return it.
-	if EqualIds(node.Successor.Id, id) {
 		return node.Successor, nil
 	}
 
@@ -90,7 +88,6 @@ func (node *Node) findSuccessor(id []byte) (*RemoteNode, error) {
 	}
 
 	return FindSuccessor_RPC(n, id)
-
 }
 
 // Psuedocode from figure 4 of chord paper
@@ -98,10 +95,19 @@ func (node *Node) findPredecessor(id []byte) (*RemoteNode, error) {
 	//TODO students should implement this method
 	curr := node.RemoteSelf
 	succ, err := GetSuccessorId_RPC(curr)
-	for !Between(id, curr.Id, succ.Id) {
+
+	// Loop while id is not beteen the current node and the
+	// calculated successor.
+	for !Between(id, curr.Id, succ.Id) && !EqualIds(curr.Id, succ.Id) {
 		curr, err = ClosestPrecedingFinger_RPC(curr, id)
-		// TODO: arreglar mamadas
+		if err != nil {
+			log.Fatal("ClosestPrecedingFinger_RPC error: " + err.Error())
+		}
+
 		succ, err = GetSuccessorId_RPC(curr)
+		if err != nil {
+			log.Fatal("GetSuccessorId_RPC error: " + err.Error())
+		}
 	}
 	return curr, err
 }

@@ -47,6 +47,14 @@ func (node *Node) GetSuccessorId(req *RemoteId, reply *IdReply) error {
 		return err
 	}
 	//TODO students should implement this method
+
+	reply.Id = node.Successor.Id
+	reply.Addr = node.Successor.Addr
+	reply.Valid = true
+	return nil
+
+	/* REMOVE WHEN SURE
+
 	remNode, err := node.findSuccessor(req.Id)
 	if err != nil {
 		reply.Valid = false
@@ -56,6 +64,8 @@ func (node *Node) GetSuccessorId(req *RemoteId, reply *IdReply) error {
 	reply.Addr = remNode.Addr
 	reply.Valid = true
 	return nil
+
+	*/
 }
 
 /* RPC */
@@ -116,15 +126,21 @@ func (node *Node) ClosestPrecedingFinger(query *RemoteQuery, reply *IdReply) err
 	//TODO students should implement this method
 	//remoteId and fromId
 	for i := KEY_LENGTH - 1; i >= 0; i-- {
-		if Between(node.FingerTable[i].Node.Id, node.Id, query.Id) {
+		if BetweenRightIncl(node.FingerTable[i].Node.Id, node.Id, query.Id) {
 			reply.Id = node.FingerTable[i].Node.Id
 			reply.Addr = node.FingerTable[i].Node.Addr
 			reply.Valid = true
 			return nil
 		}
 	}
+
+	reply.Id = node.Successor.Id
+	reply.Addr = node.Successor.Addr
+	reply.Valid = true
+	return nil
+
 	reply.Valid = false
 
 	//TODO: return some error
-	return nil
+	return errors.New("There is no closest preceding finger")
 }
