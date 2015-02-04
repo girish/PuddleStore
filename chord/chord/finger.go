@@ -29,6 +29,7 @@ func (node *Node) initFingerTable() {
 			node.RemoteSelf}
 		node.FingerTable[i] = newEntry
 	}
+	node.Successor = node.RemoteSelf
 }
 
 /* Called periodically (in a seperate go routine) to fix entries in our finger table. */

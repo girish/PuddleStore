@@ -36,7 +36,7 @@ func (node *Node) stabilize(ticker *time.Ticker) {
 		}
 
 		//TODO students should implement this method
-		if (node.Successor != nil) {
+		if node.Successor != nil {
 			pred, err := GetPredecessorId_RPC(node.Successor)
 			if err != nil {
 				log.Fatal("GetPredecessorId_RPC error: " + err.Error())
@@ -49,9 +49,7 @@ func (node *Node) stabilize(ticker *time.Ticker) {
 				log.Fatal("Notify_RPC error: " + err.Error())
 			}
 		}
-		
 
-		
 	}
 }
 
@@ -77,6 +75,15 @@ func (node *Node) notify(remoteNode *RemoteNode) {
 // Psuedocode from figure 4 of chord paper
 func (node *Node) findSuccessor(id []byte) (*RemoteNode, error) {
 	//TODO students should implement this method
+
+	// fmt.Println("este pedo")
+	// fmt.Println("%v --- %v", HashStr(node.Successor.Id), HashStr(id))
+
+	// Check if id is my immediate successor. If so, return it.
+	if EqualIds(node.Successor.Id, id) {
+		return node.Successor, nil
+	}
+
 	n, err := node.findPredecessor(id)
 	if err != nil {
 		log.Fatal("findPredecessor error: " + err.Error())
