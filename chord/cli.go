@@ -25,7 +25,7 @@ func NodeStr(node *chord.Node) string {
 }
 
 func main() {
-	countPtr := flag.Int("count", 1, "Total number of Chord nodes to start up in this process")
+	countPtr := flag.Int("count", 5, "Total number of Chord nodes to start up in this process")
 	addrPtr := flag.String("addr", "", "Address of a node in the Chord ring you wish to join")
 	idPtr := flag.String("id", "", "ID of a node in the Chord ring you wish to join")
 	flag.Parse()

@@ -39,12 +39,16 @@ func (node *Node) stabilize(ticker *time.Ticker) {
 		if err != nil {
 			log.Fatal("GetPredecessorId_RPC error: " + err.Error())
 		}
-		if Between(pred.Id, node.Id, node.Successor.Id) {
+		if pred != nil && Between(pred.Id, node.Id, node.Successor.Id) {
 			node.Successor = pred
 		}
-		err = Notify_RPC(node.Successor, node.RemoteSelf)
-		if err != nil {
-			log.Fatal("Notify_RPC error: " + err.Error())
+
+		// If you are your own successor, no not notify yourself.
+		if !EqualIds(node.Successor.Id, node.Id) {
+			err = Notify_RPC(node.Successor, node.RemoteSelf)
+			if err != nil {
+				log.Fatal("Notify_RPC error: " + err.Error())
+			}
 		}
 
 	}
@@ -61,11 +65,21 @@ func (node *Node) notify(remoteNode *RemoteNode) {
 		node.Predecessor = remoteNode
 
 		// TODO: transfer keys
-		err := TransferKeys_RPC(node.RemoteSelf, remoteNode,
-			oldPred.Id)
-		if err != nil {
-			log.Fatal("TransferKeys_RPC error: " + err.Error())
+		fmt.Println("inb4")
+		if oldPred != nil {
+			err := TransferKeys_RPC(node.RemoteSelf, remoteNode,
+				oldPred.Id)
+			if err != nil {
+				log.Fatal("TransferKeys_RPC error: " + err.Error())
+			}
+		} else {
+			err := TransferKeys_RPC(node.RemoteSelf, remoteNode,
+				nil)
+			if err != nil {
+				log.Fatal("TransferKeys_RPC error: " + err.Error())
+			}
 		}
+		fmt.Println("lol")
 	}
 }
 

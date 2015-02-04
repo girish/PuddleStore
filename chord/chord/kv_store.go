@@ -113,9 +113,14 @@ func (node *Node) TransferKeys(req *TransferReq, reply *RpcOkay) error {
 		return err
 	}
 	node.dsLock.Lock()
+	fmt.Println("ok va")
 	for key, val := range node.dataStore {
 		keyByte := HashKey(key)
-		if BetweenRightIncl(keyByte, req.PredId, req.FromId) {
+		pred := req.PredId
+		if pred == nil {
+			pred = node.Id
+		}
+		if BetweenRightIncl(keyByte, pred, req.FromId) {
 			//means we send it to the requester, because it belongs to them
 			err := Put_RPC(node.Predecessor, key, val)
 			if err != nil {

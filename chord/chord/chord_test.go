@@ -2,7 +2,7 @@ package chord
 
 import (
 	"testing"
-	// "time"
+	"time"
 )
 
 func TestCreateNode(t *testing.T) {
@@ -11,18 +11,16 @@ func TestCreateNode(t *testing.T) {
 		t.Errorf("Unable to create node, received error:%v\n", err)
 	}
 
-	_, err = CreateNode(node.RemoteSelf)
+	node2, err := CreateNode(node.RemoteSelf)
 	if err != nil {
 		t.Errorf("Unable to create node, received error:%v\n", err)
 	}
-	/*
-		// Ensure finger table of both nodes is updated
-		// (this may not be needed)
-		time.Sleep(1)
-		if !EqualIds(node2.Successor.Id, node.Id) {
-			t.Errorf("Nodes not linked correctly", err)
-		}
-	*/
+	// Ensure finger table of both nodes is updated
+	// (this may not be needed)
+	time.Sleep(1)
+	if !EqualIds(node2.Successor.Id, node.Id) {
+		t.Errorf("Nodes not linked correctly", err)
+	}
 }
 
 func TestCreateDefinedNode(t *testing.T) {
