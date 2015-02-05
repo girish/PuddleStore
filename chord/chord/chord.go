@@ -102,8 +102,6 @@ func (node *Node) init(parent *RemoteNode, definedId []byte) error {
 		return err
 	}
 
-	
-
 	// Thread 1: start RPC server on this connection
 	rpc.RegisterName(node.Addr, node)
 	go node.startRpcServer()

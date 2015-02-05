@@ -25,10 +25,12 @@ func (node *Node) initFingerTable() {
 
 	for i := range node.FingerTable {
 		// FingerEntry pointing to node
-		newEntry := FingerEntry{fingerMath(node.Id, i, KEY_LENGTH),
-			node.RemoteSelf}
-		node.FingerTable[i] = newEntry
+		newEntry := new(FingerEntry)
+		newEntry.Start = fingerMath(node.Id, i, KEY_LENGTH)
+		newEntry.Node = node.RemoteSelf
+		node.FingerTable[i] = *newEntry
 	}
+	PrintFingerTableLegible(node)
 	node.Successor = node.RemoteSelf
 }
 
@@ -36,13 +38,14 @@ func (node *Node) initFingerTable() {
 func (node *Node) fixNextFinger(ticker *time.Ticker) {
 	for _ = range ticker.C {
 		next_hash := fingerMath(node.Id, node.next, KEY_LENGTH)
+		// fmt.Printf("[%v] Fixing entry %v (%v) old: %v\n", node.Id[0], node.next, next_hash, node.FingerTable[node.next])
 		successor, err := node.findSuccessor(next_hash)
 		if err != nil {
 			// TODO: handle error
 		}
-		newEntry := FingerEntry{successor.Id, successor}
+		// fmt.Printf("[%v] Fixed entry to %v\n", successor)
 		node.ftLock.Lock()
-		node.FingerTable[node.next] = newEntry
+		node.FingerTable[node.next].Node = successor
 		node.ftLock.Unlock()
 		node.next += 1
 		if node.next >= KEY_LENGTH {
@@ -73,6 +76,14 @@ func fingerMath(n []byte, i int, m int) []byte {
 	result.Add(N, I)
 	result.Mod(result, M)
 
+	// Big int gives an empty array if value is 0.
+	// Here is a way for us to still return a 0 byte
+	zero := &big.Int{}
+	zero.SetInt64(0)
+	if result.Cmp(zero) == 0 {
+		return []byte{0}
+	}
+
 	return result.Bytes()
 }
 
@@ -82,5 +93,13 @@ func PrintFingerTable(node *Node) {
 	for _, val := range node.FingerTable {
 		fmt.Printf("\t{start:%v\tnodeLoc:%v %v}\n",
 			HashStr(val.Start), HashStr(val.Node.Id), val.Node.Addr)
+	}
+}
+
+func PrintFingerTableLegible(node *Node) {
+	fmt.Printf("[%v] FingerTable:\n", (node.Id[0]))
+	for _, val := range node.FingerTable {
+		fmt.Printf("\t{start:%v\tnodeLoc:%v %v}\n",
+			(val.Start[0]), (val.Node.Id[0]), val.Node.Addr)
 	}
 }

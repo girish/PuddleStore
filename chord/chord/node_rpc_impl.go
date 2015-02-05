@@ -134,10 +134,10 @@ func (node *Node) ClosestPrecedingFinger(query *RemoteQuery, reply *IdReply) err
 		}
 	}
 
-	reply.Id = node.Successor.Id
-	reply.Addr = node.Successor.Addr
-	reply.Valid = true
-	return nil
+	// reply.Id = node.Successor.Id
+	// reply.Addr = node.Successor.Addr
+	// reply.Valid = true
+	// return nil
 
 	reply.Valid = false
 
