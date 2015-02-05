@@ -45,7 +45,7 @@ func (node *Node) locate(key string) (*RemoteNode, error) {
 This was eliminated by the TAs because of its redundancy */
 func (node *Node) obtainNewKeys() error {
 	//lock the local db and get the keys
-	node.dsLock.Lock()
+	(&node.dsLock).Lock()
 	for key, val := range node.dataStore {
 		keyByte := HashKey(key)
 		if !BetweenRightIncl(keyByte, node.Predecessor.Id, node.Id) {
@@ -53,7 +53,7 @@ func (node *Node) obtainNewKeys() error {
 			err := Put_RPC(node.Predecessor, key, val)
 			if err != nil {
 				//TODO handle error, particularly decide what to do with the ones not transfered
-				node.dsLock.Unlock()
+				(&node.dsLock).Unlock()
 				return err
 			}
 			//then we delete it locally
@@ -61,7 +61,7 @@ func (node *Node) obtainNewKeys() error {
 		}
 	}
 	//unlock the db
-	node.dsLock.Unlock()
+	(&node.dsLock).Unlock()
 	return nil
 }
 
@@ -75,13 +75,19 @@ func (node *Node) GetLocal(req *KeyValueReq, reply *KeyValueReply) error {
 	if err := validateRpc(node, req.NodeId); err != nil {
 		return err
 	}
-	fmt.Printf("Executing get local")
-	node.dsLock.RLock()
+	fmt.Printf("%p", node.dsLock)
+	(&node.dsLock).RLock()
+	fmt.Printf("Executing get local 2")
 	key := req.Key
+	fmt.Printf("Executing get local 3")
 	val := node.dataStore[key]
+	fmt.Printf("Executing get local 4")
 	reply.Key = key
+	fmt.Printf("Executing get local 5")
 	reply.Value = val
-	node.dsLock.RUnlock()
+	fmt.Printf("Executing get local 6")
+	(&node.dsLock).RUnlock()
+	fmt.Printf("Executing get local 7")
 	return nil
 }
 
@@ -90,13 +96,14 @@ func (node *Node) PutLocal(req *KeyValueReq, reply *KeyValueReply) error {
 	if err := validateRpc(node, req.NodeId); err != nil {
 		return err
 	}
-	node.dsLock.Lock()
+	fmt.Printf("%p", node.dsLock)
+	(&node.dsLock).Lock()
 	key := req.Key
 	val := req.Value
 	node.dataStore[key] = val
 	reply.Key = key
 	reply.Value = val
-	node.dsLock.Unlock()
+	(&node.dsLock).Unlock()
 	return nil
 }
 
@@ -113,7 +120,7 @@ func (node *Node) TransferKeys(req *TransferReq, reply *RpcOkay) error {
 	if err := validateRpc(node, req.NodeId); err != nil {
 		return err
 	}
-	node.dsLock.Lock()
+	(&node.dsLock).Lock()
 	//fmt.Println("ok va")
 	for key, val := range node.dataStore {
 		keyByte := HashKey(key)
@@ -126,7 +133,7 @@ func (node *Node) TransferKeys(req *TransferReq, reply *RpcOkay) error {
 			err := Put_RPC(node.Predecessor, key, val)
 			if err != nil {
 				//TODO handle error, particularly decide what to do with the ones not transfered
-				node.dsLock.Unlock()
+				(&node.dsLock).Unlock()
 				reply.Ok = false
 				return err
 			}

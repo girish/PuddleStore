@@ -7,7 +7,7 @@
 package chord
 
 import (
-	// "fmt"
+	"fmt"
 	"log"
 	"time"
 )
@@ -41,14 +41,17 @@ func (node *Node) stabilize(ticker *time.Ticker) {
 			ticker.Stop()
 			return
 		}
-		//fmt.Printf("Hi %v\n", node.Id)
 		pred, err := GetPredecessorId_RPC(node.Successor)
 		//fmt.Printf("Hi 2 %v\n\n", node.Id)
 		if err != nil {
 			log.Fatal("GetPredecessorId_RPC error: " + err.Error())
 		}
+		if (pred != nil) {
+			fmt.Printf("%p, %v < %v < %v \n", node, node.Id, pred.Id, node.Successor.Id)	
+		}
+		
 		if pred != nil && BetweenRightIncl(pred.Id, node.Id, node.Successor.Id) {
-			//fmt.Printf("We are updating the successor of %p, from %v to %v", node, node.Successor.Id, node.Id)
+			fmt.Printf("Yes: %p\n", node)
 			node.Successor = pred
 		}
 
