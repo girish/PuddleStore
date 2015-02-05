@@ -75,19 +75,12 @@ func (node *Node) GetLocal(req *KeyValueReq, reply *KeyValueReply) error {
 	if err := validateRpc(node, req.NodeId); err != nil {
 		return err
 	}
-	fmt.Printf("%p", node.dsLock)
 	(&node.dsLock).RLock()
-	fmt.Printf("Executing get local 2")
 	key := req.Key
-	fmt.Printf("Executing get local 3")
 	val := node.dataStore[key]
-	fmt.Printf("Executing get local 4")
 	reply.Key = key
-	fmt.Printf("Executing get local 5")
 	reply.Value = val
-	fmt.Printf("Executing get local 6")
 	(&node.dsLock).RUnlock()
-	fmt.Printf("Executing get local 7")
 	return nil
 }
 
@@ -96,7 +89,6 @@ func (node *Node) PutLocal(req *KeyValueReq, reply *KeyValueReply) error {
 	if err := validateRpc(node, req.NodeId); err != nil {
 		return err
 	}
-	fmt.Printf("%p", node.dsLock)
 	(&node.dsLock).Lock()
 	key := req.Key
 	val := req.Value
