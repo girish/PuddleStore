@@ -9,6 +9,7 @@ package chord
 import (
 	"bytes"
 	"crypto/sha1"
+	"fmt"
 	"math/big"
 )
 
@@ -98,4 +99,17 @@ func BetweenRightIncl(nodeX, nodeA, nodeB []byte) bool {
 	}
 
 	return result
+}
+
+func NodeStr(node *Node) string {
+	var succ []byte
+	var pred []byte
+	if node.Successor != nil {
+		succ = node.Successor.Id
+	}
+	if node.Predecessor != nil {
+		pred = node.Predecessor.Id
+	}
+
+	return fmt.Sprintf("Node-%v: {succ:%v, pred:%v}", node.Id, succ, pred)
 }

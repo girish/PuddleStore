@@ -70,6 +70,18 @@ func TestBetweenEdge(t *testing.T) {
 	}
 }
 
+func TestBetweenEdge2(t *testing.T) {
+	A := []byte{20}
+	B := []byte{90}
+	C := []byte{0}
+
+	// B is between A and C...
+	if !Between(B, A, C) {
+		t.Errorf("Between does not return true when it should. %v < %v < %v",
+			A[0], B[0], C[0])
+	}
+}
+
 // -------------------------------------
 
 func TestBetweenRightIncl(t *testing.T) {
