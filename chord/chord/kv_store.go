@@ -21,7 +21,7 @@ func Get(node *Node, key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
+	fmt.Printf("Executing get one %v", remNode.Id)
 	return Get_RPC(remNode, key)
 }
 
@@ -75,6 +75,7 @@ func (node *Node) GetLocal(req *KeyValueReq, reply *KeyValueReply) error {
 	if err := validateRpc(node, req.NodeId); err != nil {
 		return err
 	}
+	fmt.Printf("Executing get local")
 	node.dsLock.RLock()
 	key := req.Key
 	val := node.dataStore[key]
@@ -113,7 +114,7 @@ func (node *Node) TransferKeys(req *TransferReq, reply *RpcOkay) error {
 		return err
 	}
 	node.dsLock.Lock()
-	fmt.Println("ok va")
+	//fmt.Println("ok va")
 	for key, val := range node.dataStore {
 		keyByte := HashKey(key)
 		pred := req.PredId

@@ -22,29 +22,41 @@ func (node *Node) join(other *RemoteNode) error {
 
 	node.Predecessor = nil
 	succ, err := FindSuccessor_RPC(other, node.Id)
+	node.ftLock.Lock()
 	node.Successor = succ
+	//newEntry := FingerEntry{succ.Id, succ}
+	//The id is all set already.
+	node.FingerTable[0].Node = succ
+	node.ftLock.Unlock()
+	//fmt.Printf("In join, The id of succ is: %v, the id of node is: %v and the node is %p\n", node.Successor.Id, node.Id, node)
 	return err
 }
 
 // Thread 2: Psuedocode from figure 7 of chord paper
 func (node *Node) stabilize(ticker *time.Ticker) {
+	//fmt.Printf("In stabilizeThe id of succ is: %v, the id of node is: %v and the node is %p\n", node.Successor.Id, node.Id, node)
 	for _ = range ticker.C {
 		if node.IsShutdown {
-			fmt.Printf("[%v-stabilize] Shutting down stabilize timer\n", HashStr(node.Id))
+			//fmt.Printf("[%v-stabilize] Shutting down stabilize timer\n", HashStr(node.Id))
 			ticker.Stop()
 			return
 		}
-
+		//fmt.Printf("Hi %v\n", node.Id)
 		pred, err := GetPredecessorId_RPC(node.Successor)
+		//fmt.Printf("Hi 2 %v\n\n", node.Id)
 		if err != nil {
 			log.Fatal("GetPredecessorId_RPC error: " + err.Error())
 		}
 		if pred != nil && Between(pred.Id, node.Id, node.Successor.Id) {
+			//fmt.Printf("We are updating the successor of %p, from %v to %v", node, node.Successor.Id, node.Id)
 			node.Successor = pred
 		}
 
 		// If you are your own successor, no not notify yourself.
+		
 		if !EqualIds(node.Successor.Id, node.Id) {
+			//fmt.Printf("calling notify on %v, from %v, %p\n", node.Successor.Id, node.Id, node)
+			//fmt.Println("we are executing notify")
 			err = Notify_RPC(node.Successor, node.RemoteSelf)
 			if err != nil {
 				log.Fatal("Notify_RPC error: " + err.Error())
@@ -65,7 +77,7 @@ func (node *Node) notify(remoteNode *RemoteNode) {
 		node.Predecessor = remoteNode
 
 		// TODO: transfer keys
-		fmt.Println("inb4")
+		//fmt.Println("inb4")
 		if oldPred != nil {
 			err := TransferKeys_RPC(node.RemoteSelf, remoteNode,
 				oldPred.Id)
@@ -79,7 +91,16 @@ func (node *Node) notify(remoteNode *RemoteNode) {
 				log.Fatal("TransferKeys_RPC error: " + err.Error())
 			}
 		}
-		fmt.Println("lol")
+		//fmt.Println("lol")
+	}
+	//This part is to handle the very initial case when there
+	//are only two nodes (one existing and one newly joined)
+	// and we get notified about the newly joined node
+	//SO if we have ourselves as our successor we set the succesor to be 
+	//the new node we just found about.
+	if EqualIds(node.Successor.Id, node.Id) {
+		//we set the remote node to be our predecessor
+		node.Successor = remoteNode
 	}
 }
 

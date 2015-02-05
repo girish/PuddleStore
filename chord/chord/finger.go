@@ -41,7 +41,9 @@ func (node *Node) fixNextFinger(ticker *time.Ticker) {
 			// TODO: handle error
 		}
 		newEntry := FingerEntry{successor.Id, successor}
+		node.ftLock.Lock()
 		node.FingerTable[node.next] = newEntry
+		node.ftLock.Unlock()
 		node.next += 1
 		if node.next >= KEY_LENGTH {
 			node.next = 1
