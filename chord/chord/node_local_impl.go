@@ -7,7 +7,7 @@
 package chord
 
 import (
-	"fmt"
+	// "fmt"
 	"log"
 	"time"
 )
@@ -53,7 +53,7 @@ func (node *Node) stabilize(ticker *time.Ticker) {
 		}
 
 		// If you are your own successor, no not notify yourself.
-		
+
 		if !EqualIds(node.Successor.Id, node.Id) {
 			//fmt.Printf("calling notify on %v, from %v, %p\n", node.Successor.Id, node.Id, node)
 			//fmt.Println("we are executing notify")
@@ -96,7 +96,7 @@ func (node *Node) notify(remoteNode *RemoteNode) {
 	//This part is to handle the very initial case when there
 	//are only two nodes (one existing and one newly joined)
 	// and we get notified about the newly joined node
-	//SO if we have ourselves as our successor we set the succesor to be 
+	//SO if we have ourselves as our successor we set the succesor to be
 	//the new node we just found about.
 	if EqualIds(node.Successor.Id, node.Id) {
 		//we set the remote node to be our predecessor
