@@ -142,7 +142,7 @@ func (node *Node) TransferKeys(req *TransferReq, reply *RpcOkay) error {
 		}
 	}
 	//unlock the db
-	//node.dsLock.Unlock()
+	(&node.dsLock).Unlock()
 	//if err != nil {
 	//	reply.Ok = false
 	//	return err
