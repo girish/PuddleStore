@@ -47,7 +47,7 @@ func (node *Node) stabilize(ticker *time.Ticker) {
 		if err != nil {
 			log.Fatal("GetPredecessorId_RPC error: " + err.Error())
 		}
-		if pred != nil && Between(pred.Id, node.Id, node.Successor.Id) {
+		if pred != nil && BetweenRightIncl(pred.Id, node.Id, node.Successor.Id) {
 			//fmt.Printf("We are updating the successor of %p, from %v to %v", node, node.Successor.Id, node.Id)
 			node.Successor = pred
 		}
@@ -92,15 +92,6 @@ func (node *Node) notify(remoteNode *RemoteNode) {
 			}
 		}
 		//fmt.Println("lol")
-	}
-	//This part is to handle the very initial case when there
-	//are only two nodes (one existing and one newly joined)
-	// and we get notified about the newly joined node
-	//SO if we have ourselves as our successor we set the succesor to be 
-	//the new node we just found about.
-	if EqualIds(node.Successor.Id, node.Id) {
-		//we set the remote node to be our predecessor
-		node.Successor = remoteNode
 	}
 }
 
