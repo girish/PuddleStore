@@ -7,7 +7,7 @@
 package chord
 
 import (
-	"fmt"
+	// "fmt"
 	"log"
 	"time"
 )
@@ -53,7 +53,7 @@ func (node *Node) stabilize(ticker *time.Ticker) {
 		}
 
 		// If you are your own successor, no not notify yourself.
-		
+
 		if !EqualIds(node.Successor.Id, node.Id) {
 			//fmt.Printf("calling notify on %v, from %v, %p\n", node.Successor.Id, node.Id, node)
 			//fmt.Println("we are executing notify")
