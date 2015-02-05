@@ -7,7 +7,6 @@
 package chord
 
 import (
-	"fmt"
 	"log"
 	"time"
 )
@@ -41,23 +40,20 @@ func (node *Node) stabilize(ticker *time.Ticker) {
 			ticker.Stop()
 			return
 		}
-		fmt.Printf("%p, %v & %v  \n", node, node.Id, node.Successor.Id)	
+		//fmt.Printf("%p, %v & %v  \n", node, node.Id, node.Successor.Id)	
 		pred, err := GetPredecessorId_RPC(node.Successor)
 		
 		if err != nil {
 			log.Fatal("GetPredecessorId_RPC error: " + err.Error())
 		}
-		if (pred != nil) {
-			fmt.Printf("%p, %v < %v < %v \n", node, node.Id, pred.Id, node.Successor.Id)	
-		}
 		
 		if pred != nil && BetweenRightIncl(pred.Id, node.Id, node.Successor.Id) {
-			fmt.Printf("YES %p, %v < %v < %v \n", node, node.Id, pred.Id, node.Successor.Id)
+			//fmt.Printf("YES %p, %v < %v < %v \n", node, node.Id, pred.Id, node.Successor.Id)
 			node.Successor = pred
 		}
 
 		// If you are your own successor, do not notify yourself.
-		fmt.Printf("%p, %v & %v 2  \n", node, node.Id, node.Successor.Id)	
+		//fmt.Printf("%p, %v & %v 2  \n", node, node.Id, node.Successor.Id)	
 		if !EqualIds(node.Successor.Id, node.Id) {
 			//fmt.Printf("calling notify on %v, from %v, %p\n", node.Successor.Id, node.Id, node)
 			//fmt.Println("we are executing notify")
@@ -66,7 +62,7 @@ func (node *Node) stabilize(ticker *time.Ticker) {
 				log.Fatal("Notify_RPC error: " + err.Error())
 			}
 		}
-		fmt.Printf("%p, %v & %v 3  \n", node, node.Id, node.Successor.Id)	
+		//fmt.Printf("%p, %v & %v 3  \n", node, node.Id, node.Successor.Id)	
 	}
 }
 

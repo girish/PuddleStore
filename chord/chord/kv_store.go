@@ -21,7 +21,6 @@ func Get(node *Node, key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Printf("Executing get one %v", remNode.Id)
 	return Get_RPC(remNode, key)
 }
 
