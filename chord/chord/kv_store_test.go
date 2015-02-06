@@ -1,6 +1,12 @@
 package chord
 
-import ()
+import (
+	// "fmt"
+	"strconv"
+	"math/rand"
+	"testing"
+	// "time"
+)
 
 // -------- Create Node / Create Defined Node ------------
 /*
@@ -85,43 +91,37 @@ that is part of a ring
 // 	}
 // }
 
-/*
+
 func TestRemotePutAndGetBundleRandom(t *testing.T) {
-	nNodes := 25
+	nNodes := 10
 	numRange := 100
 	base := make(map[int]int64, numRange)
 	result := make(map[int]int64, numRange)
-	nodes, _ := CreateNNodes(nNodes)
-
+	nodes, _ := CreateNNodesRandom(nNodes)
+	//time.Sleep(3*time.Second)	
 	for i := 0; i < numRange; i++ {
 		base[i] = int64(i*i)
 		//Now we randomly pick a node and put the value in it
-		nodeIndex := rand.Intn(24)
-		if (nodes[0] == nodes[nodeIndex]) {
-			fmt.Printf("you fuck %v", nodeIndex)
-		}
-		Put(nodes[nodeIndex], strconv.Itoa(i), strconv.Itoa(i*i))
+		nodeIndex := rand.Intn(9)
+		Put(nodes[nodeIndex], strconv.Itoa(i), strconv.Itoa(i*i))		
 	}
-	for _, node := range nodes {
-		PrintDataStore(node)
-	}
+	
 
 	for i := 0; i < numRange; i++ {
-		nodeIndex := rand.Intn(24)
+		nodeIndex := rand.Intn(9)
 		val, _ := Get(nodes[nodeIndex], strconv.Itoa(i))
 		result[i], _ = strconv.ParseInt(val, 10, 32)
 	}
+	
 	equal := true
 	for i := 0; i < numRange; i++ {
 		if (result[i] != base[i]) {
 			equal = false
 		}
 	}
-	//fmt.Println(base)
 	if (!equal) {
-		fmt.Println(result)
-		t.Errorf("TestRemotePutAndGetBundleRandom: Value 1 and 2 are not the same")
+		t.Errorf("TestRemotePutAndGetBundleRandom: result")
 	}
 }
 
-*/
+

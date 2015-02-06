@@ -30,7 +30,6 @@ func (node *Node) initFingerTable() {
 		newEntry.Node = node.RemoteSelf
 		node.FingerTable[i] = *newEntry
 	}
-	// PrintFingerTable(node)
 	node.Successor = node.RemoteSelf
 }
 
@@ -38,12 +37,10 @@ func (node *Node) initFingerTable() {
 func (node *Node) fixNextFinger(ticker *time.Ticker) {
 	for _ = range ticker.C {
 		next_hash := fingerMath(node.Id, node.next, KEY_LENGTH)
-		// fmt.Printf("[%v] Fixing entry %v (%v) old: %v\n", node.Id[0], node.next, next_hash, node.FingerTable[node.next])
 		successor, err := node.findSuccessor(next_hash)
 		if err != nil {
-			// TODO: handle error
+			Log.Fatal(err)
 		}
-		// fmt.Printf("[%v] Fixed entry to %v\n", successor)
 		node.ftLock.Lock()
 		node.FingerTable[node.next].Node = successor
 		node.ftLock.Unlock()

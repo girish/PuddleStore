@@ -25,3 +25,26 @@ func CreateNNodes(n int) ([]*Node, error) {
 
 	return nodes, nil
 }
+
+func CreateNNodesRandom(n int) ([]*Node, error) {
+	if n == 0 {
+		return nil, nil
+	}
+	nodes := make([]*Node, n)
+
+	curr, err := CreateNode(nil)
+	nodes[0] = curr
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 1; i < n; i++ {
+		curr, err := CreateNode(nodes[0].RemoteSelf)
+		nodes[i] = curr
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return nodes, nil
+}

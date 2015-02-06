@@ -9,6 +9,7 @@ package chord
 
 import (
 	"fmt"
+	"log"
 )
 
 /*                             */
@@ -19,7 +20,7 @@ import (
 func Get(node *Node, key string) (string, error) {
 	remNode, err := node.locate(key)
 	if err != nil {
-		return "", err
+		log.Fatal(err)
 	}
 	return Get_RPC(remNode, key)
 }
@@ -28,7 +29,7 @@ func Get(node *Node, key string) (string, error) {
 func Put(node *Node, key string, value string) error {
 	remNode, err := node.locate(key)
 	if err != nil {
-		return err
+		log.Fatal(err)
 	}
 	return Put_RPC(remNode, key, value)
 }
@@ -51,7 +52,6 @@ func (node *Node) obtainNewKeys() error {
 			//means we send it to the predecessor
 			err := Put_RPC(node.Predecessor, key, val)
 			if err != nil {
-				//TODO handle error, particularly decide what to do with the ones not transfered
 				(&node.dsLock).Unlock()
 				return err
 			}
@@ -112,7 +112,6 @@ func (node *Node) TransferKeys(req *TransferReq, reply *RpcOkay) error {
 		return err
 	}
 	(&node.dsLock).Lock()
-	//fmt.Println("ok va")
 	for key, val := range node.dataStore {
 		keyByte := HashKey(key)
 		pred := req.PredId
@@ -123,7 +122,6 @@ func (node *Node) TransferKeys(req *TransferReq, reply *RpcOkay) error {
 			//means we send it to the requester, because it belongs to them
 			err := Put_RPC(node.Predecessor, key, val)
 			if err != nil {
-				//TODO handle error, particularly decide what to do with the ones not transfered
 				(&node.dsLock).Unlock()
 				reply.Ok = false
 				return err
@@ -132,12 +130,7 @@ func (node *Node) TransferKeys(req *TransferReq, reply *RpcOkay) error {
 			delete(node.dataStore, key)
 		}
 	}
-	//unlock the db
 	(&node.dsLock).Unlock()
-	//if err != nil {
-	//	reply.Ok = false
-	//	return err
-	//}
 	reply.Ok = true
 	return nil
 }

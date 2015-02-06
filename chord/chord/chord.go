@@ -141,6 +141,27 @@ func ShutdownNode(node *Node) {
 	time.Sleep(time.Millisecond * 2000)
 	node.Listener.Close()
 
-	//TODO students should modify this method to gracefully shutdown a node
-
+	//We first disconnect ourselves from our own successors and predecessors
+	err := SetSuccessorId_RPC(node.Predecessor, node.Successor)
+	if (err != nil) {
+		Log.Fatal(err)
+	}
+	err = SetPredecessorId_RPC(node.Successor, node.Predecessor)
+	if (err != nil) {
+		Log.Fatal(err)
+	}
+	//We then transfer the keys to our successor
+	(&node.dsLock).Lock()
+	for key, val := range node.dataStore {
+		err := Put_RPC(node.Successor, key, val)
+		if err != nil {
+			//TODO handle error, particularly decide what to do with the ones not transfered
+			(&node.dsLock).Unlock()
+			Log.Fatal(err)
+		}
+		//then we delete it locally
+		delete(node.dataStore, key)
+	}
+	(&node.dsLock).Unlock()
 }
+

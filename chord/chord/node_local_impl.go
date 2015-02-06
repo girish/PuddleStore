@@ -9,6 +9,7 @@ package chord
 import (
 	"log"
 	"time"
+	"errors"
 )
 
 // This node is trying to join an existing ring that a remote node is a part of (i.e., other)
@@ -21,22 +22,20 @@ func (node *Node) join(other *RemoteNode) error {
 
 	node.Predecessor = nil
 	succ, err := FindSuccessor_RPC(other, node.Id)
+	if (EqualIds(succ.Id, node.Id)){
+		return errors.New("node already exists")
+	}
 	node.ftLock.Lock()
 	node.Successor = succ
-	//newEntry := FingerEntry{succ.Id, succ}
-	//The id is all set already.
 	node.FingerTable[0].Node = succ
 	node.ftLock.Unlock()
-	//fmt.Printf("In join, The id of succ is: %v, the id of node is: %v and the node is %p\n", node.Successor.Id, node.Id, node)
 	return err
 }
 
 // Thread 2: Psuedocode from figure 7 of chord paper
 func (node *Node) stabilize(ticker *time.Ticker) {
-	//fmt.Printf("In stabilizeThe id of succ is: %v, the id of node is: %v and the node is %p\n", node.Successor.Id, node.Id, node)
 	for _ = range ticker.C {
 		if node.IsShutdown {
-			//fmt.Printf("[%v-stabilize] Shutting down stabilize timer\n", HashStr(node.Id))
 			ticker.Stop()
 			return
 		}
@@ -90,7 +89,6 @@ func (node *Node) notify(remoteNode *RemoteNode) {
 				log.Fatal("TransferKeys_RPC error: " + err.Error())
 			}
 		}
-		//fmt.Println("lol")
 	}
 }
 
