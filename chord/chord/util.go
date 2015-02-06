@@ -54,7 +54,6 @@ B-\   /-X
 */
 func Between(nodeX, nodeA, nodeB []byte) bool {
 
-	//TODO students should implement this method
 	xInt := big.Int{}
 	xInt.SetBytes(nodeX)
 
@@ -79,7 +78,6 @@ func Between(nodeX, nodeA, nodeB []byte) bool {
 /* Is X between (A : B] */
 func BetweenRightIncl(nodeX, nodeA, nodeB []byte) bool {
 
-	//TODO students should implement this method
 	xInt := big.Int{}
 	xInt.SetBytes(nodeX)
 

@@ -1,6 +1,5 @@
 package chord
 
-// NOTE:
 func CreateNNodes(n int) ([]*Node, error) {
 	if n == 0 {
 		return nil, nil

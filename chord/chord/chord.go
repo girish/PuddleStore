@@ -41,7 +41,7 @@ type Node struct {
 	ftLock      sync.RWMutex      /* RWLock for finger table */
 	dataStore   map[string]string /* Local datastore for this node */
 	dsLock      sync.RWMutex      /* RWLock for datastore */
-	next        int               /* TODO: Not sure if this goes here */
+	next        int
 }
 
 /* Creates a Chord node with a pre-defined ID (useful for testing) */
@@ -143,12 +143,12 @@ func ShutdownNode(node *Node) {
 
 	//We first disconnect ourselves from our own successors and predecessors
 	err := SetSuccessorId_RPC(node.Predecessor, node.Successor)
-	if (err != nil) {
-		Log.Fatal(err)
+	if err != nil {
+		log.Fatal(err)
 	}
 	err = SetPredecessorId_RPC(node.Successor, node.Predecessor)
-	if (err != nil) {
-		Log.Fatal(err)
+	if err != nil {
+		log.Fatal(err)
 	}
 	//We then transfer the keys to our successor
 	(&node.dsLock).Lock()
@@ -157,11 +157,10 @@ func ShutdownNode(node *Node) {
 		if err != nil {
 			//TODO handle error, particularly decide what to do with the ones not transfered
 			(&node.dsLock).Unlock()
-			Log.Fatal(err)
+			log.Fatal(err)
 		}
 		//then we delete it locally
 		delete(node.dataStore, key)
 	}
 	(&node.dsLock).Unlock()
 }
-
