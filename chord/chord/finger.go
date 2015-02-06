@@ -8,6 +8,7 @@ package chord
 
 import (
 	"fmt"
+	"log"
 	"math/big"
 	"time"
 )
@@ -39,7 +40,7 @@ func (node *Node) fixNextFinger(ticker *time.Ticker) {
 		next_hash := fingerMath(node.Id, node.next, KEY_LENGTH)
 		successor, err := node.findSuccessor(next_hash)
 		if err != nil {
-			Log.Fatal(err)
+			log.Fatal(err)
 		}
 		node.ftLock.Lock()
 		node.FingerTable[node.next].Node = successor

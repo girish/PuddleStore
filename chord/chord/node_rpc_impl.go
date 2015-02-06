@@ -110,6 +110,7 @@ func (node *Node) ClosestPrecedingFinger(query *RemoteQuery, reply *IdReply) err
 	if err := validateRpc(node, query.FromId); err != nil {
 		return err
 	}
+	//remoteId and fromId
 	for i := KEY_LENGTH - 1; i >= 0; i-- {
 		if BetweenRightIncl(node.FingerTable[i].Node.Id, node.Id, query.Id) {
 			reply.Id = node.FingerTable[i].Node.Id

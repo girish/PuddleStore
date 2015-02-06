@@ -7,9 +7,9 @@
 package chord
 
 import (
+	"errors"
 	"log"
 	"time"
-	"errors"
 )
 
 // This node is trying to join an existing ring that a remote node is a part of (i.e., other)
@@ -22,7 +22,7 @@ func (node *Node) join(other *RemoteNode) error {
 
 	node.Predecessor = nil
 	succ, err := FindSuccessor_RPC(other, node.Id)
-	if (EqualIds(succ.Id, node.Id)){
+	if EqualIds(succ.Id, node.Id) {
 		return errors.New("node already exists")
 	}
 	node.ftLock.Lock()
@@ -65,15 +65,12 @@ func (node *Node) stabilize(ticker *time.Ticker) {
 // Psuedocode from figure 7 of chord paper
 func (node *Node) notify(remoteNode *RemoteNode) {
 
-	//TODO students should implement this method
 	if node.Predecessor == nil ||
 		Between(remoteNode.Id, node.Predecessor.Id, node.Id) {
 
 		oldPred := node.Predecessor
 		node.Predecessor = remoteNode
 
-		// TODO: transfer keys
-		//fmt.Println("inb4")
 		if oldPred != nil {
 			err := TransferKeys_RPC(node.RemoteSelf, remoteNode,
 				oldPred.Id)
@@ -101,7 +98,6 @@ func (node *Node) notify(remoteNode *RemoteNode) {
 
 // Psuedocode from figure 4 of chord paper
 func (node *Node) findSuccessor(id []byte) (*RemoteNode, error) {
-	//TODO students should implement this method
 
 	// Check if id is between me and my immediate successor.
 	// Check if I'm my own successor.
@@ -122,7 +118,6 @@ func (node *Node) findSuccessor(id []byte) (*RemoteNode, error) {
 
 // Psuedocode from figure 4 of chord paper
 func (node *Node) findPredecessor(id []byte) (*RemoteNode, error) {
-	//TODO students should implement this method
 	curr := node.RemoteSelf
 	succ, err := GetSuccessorId_RPC(curr)
 
