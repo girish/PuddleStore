@@ -30,7 +30,7 @@ func (node *Node) initFingerTable() {
 		newEntry.Node = node.RemoteSelf
 		node.FingerTable[i] = *newEntry
 	}
-	PrintFingerTableLegible(node)
+	// PrintFingerTable(node)
 	node.Successor = node.RemoteSelf
 }
 
@@ -93,13 +93,5 @@ func PrintFingerTable(node *Node) {
 	for _, val := range node.FingerTable {
 		fmt.Printf("\t{start:%v\tnodeLoc:%v %v}\n",
 			HashStr(val.Start), HashStr(val.Node.Id), val.Node.Addr)
-	}
-}
-
-func PrintFingerTableLegible(node *Node) {
-	fmt.Printf("[%v] FingerTable:\n", (node.Id[0]))
-	for _, val := range node.FingerTable {
-		fmt.Printf("\t{start:%v\tnodeLoc:%v %v}\n",
-			(val.Start[0]), (val.Node.Id[0]), val.Node.Addr)
 	}
 }

@@ -1,11 +1,6 @@
 package chord
 
-import (
-	"fmt"
-	"testing"
-	"math/rand"
-	"strconv"
-)
+import ()
 
 // -------- Create Node / Create Defined Node ------------
 /*
@@ -64,7 +59,7 @@ that is part of a ring
 
 // 	for i := 0; i < nNodes; i++ {
 // 		Put(nodes[i], strconv.Itoa(i*i), strconv.Itoa(i*i*i))
-// 	} 
+// 	}
 
 // 	for i := nNodes - 1; i < 0; i++ {
 // 		val := nNodes - i
@@ -87,9 +82,10 @@ that is part of a ring
 // 		if (valueOne != valueTwo) {
 // 			t.Errorf("TestRemotePutAndGetSequence: Value 1 and 2 are not the same")
 // 		}
-// 	} 
+// 	}
 // }
 
+/*
 func TestRemotePutAndGetBundleRandom(t *testing.T) {
 	nNodes := 25
 	numRange := 100
@@ -114,7 +110,7 @@ func TestRemotePutAndGetBundleRandom(t *testing.T) {
 		nodeIndex := rand.Intn(24)
 		val, _ := Get(nodes[nodeIndex], strconv.Itoa(i))
 		result[i], _ = strconv.ParseInt(val, 10, 32)
-	} 
+	}
 	equal := true
 	for i := 0; i < numRange; i++ {
 		if (result[i] != base[i]) {
@@ -128,4 +124,4 @@ func TestRemotePutAndGetBundleRandom(t *testing.T) {
 	}
 }
 
-
+*/

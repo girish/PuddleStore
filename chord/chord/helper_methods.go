@@ -7,8 +7,7 @@ func CreateNNodes(n int) ([]*Node, error) {
 	}
 	nodes := make([]*Node, n)
 
-	id := make([]byte, KEY_LENGTH)
-	id[0] = byte(0)
+	id := []byte{byte(0)}
 	curr, err := CreateDefinedNode(nil, id)
 	nodes[0] = curr
 	if err != nil {
@@ -16,8 +15,7 @@ func CreateNNodes(n int) ([]*Node, error) {
 	}
 
 	for i := 1; i < n; i++ {
-		id := make([]byte, KEY_LENGTH)
-		id[0] = byte(i * 10)
+		id := []byte{byte(i * 10)}
 		curr, err := CreateDefinedNode(nodes[0].RemoteSelf, id)
 		nodes[i] = curr
 		if err != nil {

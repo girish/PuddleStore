@@ -1,6 +1,7 @@
 package chord
 
 import (
+	"fmt"
 	"math"
 	"testing"
 	"time"
@@ -20,33 +21,40 @@ func TestInitFingerTable(t *testing.T) {
 			expected = []byte{byte(
 				(i + int(math.Pow(float64(2), float64(j)))) % m)}
 			if !EqualIds(res, expected) {
-				t.Errorf("[%v] BAD ENTRY: %v != %v", i, res, expected)
+				t.Errorf("[%v] BAD ENTRY %v: %v != %v", i, j, res, expected)
 			}
 		}
 	}
-
-	nodes, _ := CreateNNodes(10)
-	time.Sleep(time.Second)
-	for i := 0; i < 10; i++ {
-		for j := 0; j < KEY_LENGTH; j++ {
-			res = nodes[i].FingerTable[j].Start
-			expected = []byte{byte(
-				(i + int(math.Pow(float64(2), float64(j)))) % m)}
-			if !EqualIds(res, expected) {
-				t.Errorf("[%v] BAD ENTRY: %v != %v", i, res, expected)
-			}
-		}
-	}
-	// ShutdownNode(node)
 }
 
+// Makes 26 nodes, waits a few seconds, and checks that every entry
+// points to its next multiple of 10 from "Start"
+// (ex: Start = 178 would should always point to 180)
 func TestFixNextFinger(t *testing.T) {
-	nodes, _ := CreateNNodes(10)
-	time.Sleep(time.Second * 3)
-	for i := 0; i < 10; i++ {
-		PrintFingerTableLegible(nodes[i])
+	nodes, _ := CreateNNodes(26)
+	time.Sleep(time.Second * 60)
+	for i := 0; i < 26; i++ {
+		PrintFingerTable(nodes[i])
+		fmt.Println(NodeStr(nodes[i]))
 	}
-	t.Errorf("Hash keys made by the same string are not equal.")
+	for i := 0; i < 26; i++ {
+		node := nodes[i]
+		for j := 0; j < KEY_LENGTH; j++ {
+			start := node.FingerTable[j].Start
+			pointer := node.FingerTable[j].Node
+			var expected []byte
+			if start[0]%10 == 0 {
+				expected = []byte{byte(start[0])}
+			} else {
+				expected = []byte{byte(((start[0]/10 + 1) % 26) * 10)}
+			}
+
+			if !EqualIds(pointer.Id, expected) {
+				t.Errorf("[%v] Error at\nStart: %v, Node: %v, expected: %v",
+					node.Id, start, pointer.Id, expected)
+			}
+		}
+	}
 }
 
 // REDUNDANT; SAME AS TestInitFingerTable!
