@@ -6,8 +6,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/big"
 	"os"
-	"strconv"
 	"strings"
 )
 
@@ -35,8 +35,9 @@ func main() {
 		parent = nil
 	} else {
 		parent = new(chord.RemoteNode)
-		val, _ := strconv.Atoi(*idPtr)
-		parent.Id = []byte{byte(val)}
+		val := big.NewInt(0)
+		val.SetString(*idPtr, 10)
+		parent.Id = val.Bytes()
 		parent.Addr = *addrPtr
 		fmt.Printf("Attach this node to id:%v, addr:%v\n", parent.Id, parent.Addr)
 	}
