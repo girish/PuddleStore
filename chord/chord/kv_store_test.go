@@ -2,8 +2,8 @@ package chord
 
 import (
 	// "fmt"
-	"strconv"
 	"math/rand"
+	"strconv"
 	"testing"
 	// "time"
 )
@@ -91,37 +91,33 @@ that is part of a ring
 // 	}
 // }
 
-
 func TestRemotePutAndGetBundleRandom(t *testing.T) {
 	nNodes := 10
 	numRange := 100
 	base := make(map[int]int64, numRange)
 	result := make(map[int]int64, numRange)
 	nodes, _ := CreateNNodesRandom(nNodes)
-	//time.Sleep(3*time.Second)	
+	//time.Sleep(3*time.Second)
 	for i := 0; i < numRange; i++ {
-		base[i] = int64(i*i)
+		base[i] = int64(i * i)
 		//Now we randomly pick a node and put the value in it
 		nodeIndex := rand.Intn(9)
-		Put(nodes[nodeIndex], strconv.Itoa(i), strconv.Itoa(i*i))		
+		Put(nodes[nodeIndex], strconv.Itoa(i), strconv.Itoa(i*i))
 	}
-	
 
 	for i := 0; i < numRange; i++ {
 		nodeIndex := rand.Intn(9)
 		val, _ := Get(nodes[nodeIndex], strconv.Itoa(i))
 		result[i], _ = strconv.ParseInt(val, 10, 32)
 	}
-	
+
 	equal := true
 	for i := 0; i < numRange; i++ {
-		if (result[i] != base[i]) {
+		if result[i] != base[i] {
 			equal = false
 		}
 	}
-	if (!equal) {
+	if !equal {
 		t.Errorf("TestRemotePutAndGetBundleRandom: result")
 	}
 }
-
-
