@@ -54,8 +54,6 @@ func (node *Node) stabilize(ticker *time.Ticker) {
 
 		// If you are your own successor, do not notify yourself.
 		if !EqualIds(node.Successor.Id, node.Id) {
-			//fmt.Printf("calling notify on %v, from %v, %p\n", node.Successor.Id, node.Id, node)
-			//fmt.Println("we are executing notify")
 			err = Notify_RPC(node.Successor, node.RemoteSelf)
 			if err != nil {
 				log.Fatal("Notify_RPC error: " + err.Error())
