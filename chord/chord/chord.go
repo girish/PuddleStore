@@ -17,7 +17,7 @@ import (
 )
 
 // Number of bits (i.e. M value), assumes <= 128 and divisible by 8
-const KEY_LENGTH = 8
+var KEY_LENGTH = 8
 
 // Turn debug-mode printing on/off
 const DEBUG = true
