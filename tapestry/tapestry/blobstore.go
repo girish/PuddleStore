@@ -53,7 +53,7 @@ func (bs *BlobStore) Get(key string) ([]byte, bool) {
 */
 func FetchRemoteBlob(remote Node, key string) (blob *[]byte, err error) {
 	Debug.Printf("FetchRemoteBlob %v %v", key, remote)
-	err = makeRemoteCall(remote.Address, "BlobStore", "Fetch", key, &blob)
+	err = makeRemoteCall(remote.Address, "BlobStoreRPC", "Fetch", key, &blob)
 	return
 }
 
