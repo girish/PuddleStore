@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"strconv"
 	"time"
+	"math"
 )
 
 /*
@@ -58,7 +59,7 @@ func Hash(key string) (id ID) {
 func SharedPrefixLength(a ID, b ID) (i int) {
 	// TODO: Students should implement this
 	count := 0
-	for i := 0; a[i] == b[i]; i++ {
+	for i := 0; i < DIGITS && a[i] == b[i]; i++ {
 		count++
 	}
 	return count
@@ -131,6 +132,15 @@ func (id ID) BetterChoice(first ID, second ID) bool {
 */
 func (id ID) Closer(first ID, second ID) bool {
 	// TODO: Students should implement this
+	for i := 0; i < len(id); i++ {
+		difF := math.Abs(float64(first[i] - id[i]))
+		difS := math.Abs(float64(second[i] - id[i]))
+		if (difF < difS) {
+			return true
+		} else if (difS < difF) {
+			return false
+		}
+	}
 	return false
 }
 
