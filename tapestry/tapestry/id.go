@@ -57,7 +57,11 @@ func Hash(key string) (id ID) {
 */
 func SharedPrefixLength(a ID, b ID) (i int) {
 	// TODO: Students should implement this
-	return
+	count := 0
+	for i := 0; a[i] == b[i]; i++ {
+		count++
+	}
+	return count
 }
 
 /*
