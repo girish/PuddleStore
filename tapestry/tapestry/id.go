@@ -76,6 +76,22 @@ func SharedPrefixLength(a ID, b ID) (i int) {
 */
 func (id ID) BetterChoice(first ID, second ID) bool {
 	// TODO: Students should implement this
+	fPrefix := SharedPrefixLength(first, id)
+	sPrefix := SharedPrefixLength(second, id)
+	if (fPrefix != sPrefix || (sPrefix == DIGITS && fPrefix == DIGITS)) {
+		//If they are not the same or if they are the same in all the numbers then we return
+		return fPrefix > sPrefix
+	}
+	//So they are the same, but not as long as DIGITS we need to figure out which one is better
+	index = sPrefix
+	target = id[index]
+	madeAChoice = false
+	for !madeAChoice {
+		//If it stays in -1 then the digit of the first is > the digit in ID
+		distF := -1
+		distS := -1
+		if (first[index] < id[index])
+	} 
 	return false
 }
 
