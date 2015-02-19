@@ -86,11 +86,33 @@ func (id ID) BetterChoice(first ID, second ID) bool {
 	index = sPrefix
 	target = id[index]
 	madeAChoice = false
+	choice = false
 	for !madeAChoice {
 		//If it stays in -1 then the digit of the first is > the digit in ID
-		distF := -1
-		distS := -1
-		if (first[index] < id[index])
+		fDigit = first[index] % BASE
+		sDigit = second[index] % BASE
+		fDistance = 0
+		sDistance = 0
+		for sDigit != target {
+			sDistance++
+			sDigit++
+			sDigit = sDigit % BASE
+		}
+		for fDigit != target {
+			fDistance++
+			fDigit++
+			fDigit = fDigit % BASE
+		}
+		if fDistance == sDistance {
+			if index == DIGITS {
+				return false
+			} else {
+				index++
+				target = id[index]
+			}
+		} else {
+			return fDistance < sDistance
+		} 
 	} 
 	return false
 }
