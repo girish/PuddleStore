@@ -83,16 +83,15 @@ func (id ID) BetterChoice(first ID, second ID) bool {
 		return fPrefix > sPrefix
 	}
 	//So they are the same, but not as long as DIGITS we need to figure out which one is better
-	index = sPrefix
-	target = id[index]
-	madeAChoice = false
-	choice = false
+	index := sPrefix
+	target := id[index]
+	madeAChoice := false
 	for !madeAChoice {
 		//If it stays in -1 then the digit of the first is > the digit in ID
-		fDigit = first[index] % BASE
-		sDigit = second[index] % BASE
-		fDistance = 0
-		sDistance = 0
+		fDigit := first[index] % BASE
+		sDigit := second[index] % BASE
+		fDistance := 0
+		sDistance := 0
 		for sDigit != target {
 			sDistance++
 			sDigit++

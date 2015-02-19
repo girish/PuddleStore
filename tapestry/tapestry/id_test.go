@@ -1,3 +1,5 @@
+package tapestry
+
 import (
 	"testing"
 )
