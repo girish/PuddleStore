@@ -55,6 +55,30 @@ func (t *RoutingTable) Add(node Node) (added bool, previous *Node) {
 	t.mutex.Lock()
 
 	// TODO: Students should implement this
+	//if len(t.rows[i][node.Id[i]]) > 3 {
+	//	previous = t.rows
+	//}
+
+	// Find table slot.
+	i := SharedPrefixLength(node.Id, t.local.Id)
+	slot := t.rows[i][node.Id[i]]
+
+	// Check if it exists; if it does return false
+	for i := 0; i < len(*slot); i++ {
+		if SharedPrefixLength((*slot)[i].Id, node.Id) == DIGITS {
+			added = false
+			t.mutex.Unlock()
+			return
+		}
+	}
+
+	// Append new slot and make sure theres a 3 node maximum.
+	*slot = append(*slot, node)
+	if len(*slot) > 3 {
+		previous = &(*slot)[1]
+		*slot = (*slot)[1:]
+	}
+	added = true
 
 	t.mutex.Unlock()
 
@@ -72,6 +96,25 @@ func (t *RoutingTable) Remove(node Node) (wasRemoved bool) {
 
 	// TODO: Students should implement this
 
+<<<<<<< HEAD
+=======
+	// Get the table slot
+	i := SharedPrefixLength(node.Id, t.local.Id)
+	slot := t.rows[i][node.Id[i]]
+
+	// Find and remove node
+	for i := 0; i < len(*slot); i++ {
+		if SharedPrefixLength((*slot)[i].Id, node.Id) == DIGITS {
+			*slot = append((*slot)[:i], (*slot)[i+1:]...) // This is remove in Go
+			wasRemoved = true
+			t.mutex.Unlock()
+			return
+		}
+	}
+
+	// Return false if node was not found.
+	wasRemoved = false
+>>>>>>> d96ff3bfb785fa81de15322446b062d021fe6e55
 	t.mutex.Unlock()
 
 	return
@@ -85,6 +128,17 @@ func (t *RoutingTable) GetLevel(level int) (nodes []Node) {
 	t.mutex.Lock()
 
 	// TODO: Students should implement this
+<<<<<<< HEAD
+=======
+	row := t.rows[level]
+	for i := 0; i < BASE; i++ {
+		for j := 0; j < len(*row[i]); j++ {
+			if SharedPrefixLength((*(row[i]))[j].Id, t.local.Id) != DIGITS {
+				nodes = append(nodes, (*(row[i]))[j]) // append node
+			}
+		}
+	}
+>>>>>>> d96ff3bfb785fa81de15322446b062d021fe6e55
 
 	t.mutex.Unlock()
 
@@ -99,6 +153,16 @@ func (t *RoutingTable) GetNextHop(id ID) (node Node) {
 	t.mutex.Lock()
 
 	// TODO: Students should implement this
+<<<<<<< HEAD
+=======
+	level := SharedPrefixLength(id, t.local.Id)
+	row := t.rows[level]
+	col := level
+	for len(*(row[col])) == 0 {
+		col = (col + 1) % BASE
+	}
+	node = (*(row[col]))[0]
+>>>>>>> d96ff3bfb785fa81de15322446b062d021fe6e55
 
 	t.mutex.Unlock()
 

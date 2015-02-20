@@ -85,6 +85,15 @@ func (node *Node) notify(remoteNode *RemoteNode) {
 			}
 		}
 	}
+	//This part is to handle the very initial case when there
+	//are only two nodes (one existing and one newly joined)
+	// and we get notified about the newly joined node
+	//SO if we have ourselves as our successor we set the succesor to be
+	//the new node we just found about.
+	// if EqualIds(node.Successor.Id, node.Id) {
+	// 	//we set the remote node to be our predecessor
+	// 	node.Successor = remoteNode
+	// }
 }
 
 // Psuedocode from figure 4 of chord paper

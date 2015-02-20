@@ -63,6 +63,21 @@ type NotifyReq struct {
 	UpdateAddr string
 }
 
+type UpdateReq struct {
+	FromId     []byte
+	UpdateId   []byte
+	UpdateAddr string
+}
+
+// NodeId: Intended node to received the request
+// UpdateId: Node that you are wishing to notify about
+type NotifyReq struct {
+	NodeId     []byte
+	NodeAddr   string
+	UpdateId   []byte
+	UpdateAddr string
+}
+
 /* RPC connection map cache */
 var connMap = make(map[string]*rpc.Client)
 
