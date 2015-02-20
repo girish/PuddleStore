@@ -75,5 +75,37 @@ func TestBetterChoice(t *testing.T) {
 }
 
 func TestCloser(t *testing.T) {
+	//There is something interesting that happens and its that when I subtract 
+	//some of the numbers overflow but I don't think that's such a big issue. 
+	a := ID{1,2,3,4,5,6,7,6,9,5,11,12,1,2,3,0,4, 4,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
+	id := ID{1,2,3,4,5,6,7,6,9,5,10,12,13,13,15, 0,2,2,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
+	b := ID{1,2,3,4,5,6,7,6,9,5,11,12,1,2,3,0,4, 5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
+	choice := id.Closer(a, b)
+	if (!choice) {//Answer should be true because a is closer
+		t.Errorf("The Closer does not work", choice, a, b)
+	}
 
+	a = ID{1,2,3,4,5,6,7,6,9,5,11,12,1,2,3,0,4,4,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
+	id = ID{1,2,3,4,5,6,7,6,9,5,10,12,13,13,15,0,2,2,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
+	b = ID{1,2,3,4,5,6,7,6,9,5,11,12,1,2,3,0,4,4,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
+	choice = id.Closer(a, b)
+	if (choice) {//Answer should be false because they are the same ids
+		t.Errorf("The Closer does not work", choice, a, b)
+	}
+
+	a = ID{1,2,3,4,5,6,7,6,9,5,11,12,1,2,3,0,4,4,3,0,2,12,15,13,15,13,2,5,10,11,13,  13,8,9,12,13,0,9,8,5}
+	id = ID{1,2,3,4,5,6,7,6,9,5,10,12,13,13,15,0,2,2,3,0,2,12,15,13,15,13,2,5,10,11, 11,2,8,9,12,13,0,9,8,5}
+	b = ID{1,2,3,4,5,6,7,6,9,5,11,12,1,2,3,0,4,4,3,0,2,12,15,13,15,13,2,5,10,11,13,  10,8,9,12,13,0,9,8,5}
+	choice = id.Closer(a, b)
+	if (choice) {//Answer should be false because b is closer in absolute value 
+		t.Errorf("The Closer does not work", choice, a, b)
+	}
+
+	a = ID{1,2,3,4,5,6,7,6,9,5,11,12,1,2,3,0,4,4,3,0,2,12,15,13,15,13,2,5,10,11,13,  10,8,9,12,13,0,9,8,5}
+	id = ID{1,2,3,4,5,6,7,6,9,5,10,12,13,13,15,0,2,2,3,0,2,12,15,13,15,13,2,5,10,11, 13,2,8,9,12,13,0,9,8,5}
+	b = ID{1,2,3,4,5,6,7,6,9,5,11,12,1,2,3,0,4,4,3,0,2,12,15,13,15,13,2,5,10,11,13,  12,8,9,12,13,0,9,8,5}
+	choice = id.Closer(a, b)
+	if (choice) {//Answer should be false because b is closer in absolute value 
+		t.Errorf("The Closer does not work", choice, a, b)
+	}
 }

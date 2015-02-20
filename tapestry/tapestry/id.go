@@ -134,8 +134,9 @@ func (id ID) BetterChoice(first ID, second ID) bool {
 func (id ID) Closer(first ID, second ID) bool {
 	// TODO: Students should implement this
 	for i := 0; i < len(id); i++ {
-		difF := math.Abs(float64(first[i] - id[i]))
-		difS := math.Abs(float64(second[i] - id[i]))
+		difF := math.Abs(float64(int(first[i]) - int(id[i])))
+		difS := math.Abs(float64(int(second[i]) - int(id[i])))
+		fmt.Println(difF, difS)
 		if (difF < difS) {
 			return true
 		} else if (difS < difF) {
