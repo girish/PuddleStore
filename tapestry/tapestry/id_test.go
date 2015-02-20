@@ -58,6 +58,20 @@ func TestBetterChoice(t *testing.T) {
 	if (!choice) {//choice should be true because it is the closes when incrementing by 1 % base
 		t.Errorf("The BetterChoice does not work", choice, a, b)
 	}
+	a = ID{1,2,3,4,5,6,7,6,9,5,11,12,1,2,3,0,4,    4,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
+	b = ID{1,2,3,4,5,6,7,6,9,5,11,12,1,2,3,0,4,    5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
+	id = ID{1,2,3,4,5,6,7,6,9,5,10,12,13,13,15,0,2,2,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
+	choice = id.BetterChoice(a, b)
+	if (choice) {//choice should be false by a combination of increments of % 1
+		t.Errorf("The BetterChoice does not work", choice, a, b)
+	}
+	a = ID{13,2,3,4,5,6,7,6,9,5,11,12,1,2,3,0,4,4,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
+	b = ID{7,2,3,4,5,6,7,6,9,5,11,12,1,2,3,0,4,5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
+	id = ID{1,2,3,4,5,6,7,6,9,5,10,12,13,13,15,0,2,2,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
+	choice = id.BetterChoice(a, b)
+	if (!choice) {//choice should be true for the beginning entry
+		t.Errorf("The BetterChoice does not work", choice, a, b)
+	}
 }
 
 func TestCloser(t *testing.T) {
