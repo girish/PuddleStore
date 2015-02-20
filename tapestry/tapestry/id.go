@@ -103,6 +103,7 @@ func (id ID) BetterChoice(first ID, second ID) bool {
 			fDigit++
 			fDigit = fDigit % BASE
 		}
+		//fmt.Printf("The target is %v, then fDistance: %v and sDistance: %v\n", target, fDistance, sDistance)
 		if fDistance == sDistance {
 			if index == DIGITS {
 				return false
