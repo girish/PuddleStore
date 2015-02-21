@@ -164,7 +164,7 @@ func (t *RoutingTable) GetNextHop(id ID) (node Node) {
 	// TODO: Students should implement this
 	level := SharedPrefixLength(id, t.local.Id)
 	row := t.rows[level]
-	col := level
+	col := level // <- porque empiezas de aqui y no de 0? y esto te va a dar un overflow porque hay mas niveles que bases
 	for len(*(row[col])) == 0 {
 		col = (col + 1) % BASE
 	}

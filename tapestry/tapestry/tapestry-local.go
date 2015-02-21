@@ -3,6 +3,7 @@ package tapestry
 import (
 	//"errors"
 	"fmt"
+	"time"
 )
 
 /*
@@ -74,9 +75,9 @@ func (local *TapestryNode) Join(otherNode Node) error {
 	}
 
 	// Add the neighbours to our local routing table.
-	for _, n := range neighbours {
-		local.addRoute(n)
-	}
+	// for _, n := range neighbours {
+	// 	local.addRoute(n)
+	// }
 
 	// TODO: Students should implement the backpointer traversal portion of Join
 
@@ -125,6 +126,21 @@ func (local *TapestryNode) Join(otherNode Node) error {
 */
 func (local *TapestryNode) Leave() (err error) {
 	// TODO: Students should implement this
+
+
+
+	sets := local.backpointers.sets // [DIGITS]*NodeSet
+	for _, set := range sets {
+		set.mutex.Lock()
+		for node, _ := range set.data {
+			//TODO: Add suitable replacement from our routing table
+			err := local.tapestry.notifyLeave(node, local.node, nil)
+			if err != nil {
+				//TODO
+			}
+		}
+		set.mutex.Unlock()
+	}
 	return
 }
 
@@ -138,8 +154,28 @@ func (local *TapestryNode) Leave() (err error) {
 */
 func (local *TapestryNode) Publish(key string) (done chan bool, err error) {
 	// TODO: Students should implement this
-	return
+	done = make(chan bool)
+
+	root, err := local.findRoot(local.node, Hash(key))
+	local.tapestry.register(root, local.node, key)
+
+	//Periodically checking
+	go func () {
+		for {
+			select {
+				case <-done:
+					return
+				case <-time.After(time.Second * 1):
+					//republish the key every second.
+					root,_ := local.findRoot(local.node, Hash(key))
+					local.tapestry.register(root, local.node, key)
+			}
+		}
+	}()
+
+	return done, err //TODO: ?
 }
+
 
 /*
    Client API.  Look up the Tapestry nodes that are storing the blob for the specified key.
