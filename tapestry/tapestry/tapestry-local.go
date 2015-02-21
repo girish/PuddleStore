@@ -1,10 +1,7 @@
 package tapestry
 
 import (
-<<<<<<< HEAD
-=======
 	"errors"
->>>>>>> d96ff3bfb785fa81de15322446b062d021fe6e55
 	"fmt"
 )
 
@@ -168,8 +165,6 @@ func (local *TapestryNode) NotifyLeave(from Node, replacement *Node) (err error)
 */
 func (local *TapestryNode) GetNextHop(id ID) (morehops bool, nexthop Node, err error) {
 	// TODO: Students should implement this
-<<<<<<< HEAD
-=======
 
 	// Call routingtable.go method
 	nexthop = local.table.GetNextHop(id)
@@ -183,8 +178,6 @@ func (local *TapestryNode) GetNextHop(id ID) (morehops bool, nexthop Node, err e
 	if id.BetterChoice(local.node.Id, nexthop.Id) {
 		err = errors.New("Next hop was not better than the previous")
 	}
-
->>>>>>> d96ff3bfb785fa81de15322446b062d021fe6e55
 	return
 }
 
@@ -303,9 +296,6 @@ func (local *TapestryNode) addRoute(node Node) (err error) {
 func (local *TapestryNode) findRoot(start Node, id ID) (Node, error) {
 	Debug.Printf("Routing to %v\n", id)
 	// TODO: Students should implement this
-<<<<<<< HEAD
-	return local.node, nil
-=======
 
 	// I hate Go's scoping </3
 	next := start
@@ -327,5 +317,4 @@ func (local *TapestryNode) findRoot(start Node, id ID) (Node, error) {
 
 	// TODO: Again, what error goes here?
 	return current, nil
->>>>>>> d96ff3bfb785fa81de15322446b062d021fe6e55
 }

@@ -3,7 +3,7 @@ package tapestry
 import (
 	"fmt"
 	"strings"
-	"testing"
+	//"testing"
 )
 
 func printTable(table *RoutingTable) {
@@ -19,6 +19,7 @@ func printTable(table *RoutingTable) {
 
 // Adds 100,000 nodes to the table and removes them, checking
 // that all where deleted.
+/*
 func TestSimpleAddAndRemove(t *testing.T) {
 	// We need more stuff done before doing this.
 	NUM_NODES := 100000
@@ -42,3 +43,4 @@ func TestSimpleAddAndRemove(t *testing.T) {
 		}
 	}
 }
+*/

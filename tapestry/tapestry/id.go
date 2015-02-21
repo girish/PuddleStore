@@ -133,17 +133,22 @@ func (id ID) BetterChoice(first ID, second ID) bool {
 */
 func (id ID) Closer(first ID, second ID) bool {
 	// TODO: Students should implement this
-	for i := 0; i < len(id); i++ {
-		difF := math.Abs(float64(int(first[i]) - int(id[i])))
-		difS := math.Abs(float64(int(second[i]) - int(id[i])))
-		fmt.Println(difF, difS)
-		if (difF < difS) {
-			return true
-		} else if (difS < difF) {
-			return false
-		}
+	firstNum := 0.0
+	secondNum := 0.0
+	idNum := 0.0
+	//I am assuming that all ids are DIGITS length
+	pow := 0
+	for i := DIGITS - 1; i >= 0; i-- {
+		firstNum += float64(first[i]) * math.Pow(BASE, float64(pow))
+		secondNum += float64(second[i]) * math.Pow(BASE, float64(pow))
+		idNum += float64(id[i]) * math.Pow(BASE, float64(pow))
+		pow++
 	}
-	return false
+	//fmt.Println(firstNum, secondNum, idNum)
+	difF := math.Abs(firstNum - idNum)
+	difS := math.Abs(secondNum - idNum)
+	fmt.Println(difF, difS)
+	return difF < difS
 }
 
 /*
