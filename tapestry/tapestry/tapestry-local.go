@@ -1,11 +1,7 @@
 package tapestry
 
 import (
-<<<<<<< HEAD
 	"errors"
-=======
-	// "errors"
->>>>>>> 8a2102ebb62ad8a33e7153f0e88b604ab39c0b67
 	"fmt"
 )
 
@@ -230,16 +226,9 @@ func (local *TapestryNode) GetNextHop(id ID) (morehops bool, nexthop Node, err e
 
 	// If calling nexthop is worse than the current one, it errors out.
 	// TODO: Is this the potential erorr?
-<<<<<<< HEAD
-	if id.BetterChoice(local.node.Id, nexthop.Id) {
-		err = errors.New("Next hop was not better than the previous")
-	}
-=======
 	// if id.BetterChoice(local.node.Id, nexthop.Id) {
 	//	err = errors.New("Next hop was not better than the previous")
 	// }
-
->>>>>>> 8a2102ebb62ad8a33e7153f0e88b604ab39c0b67
 	return
 }
 
