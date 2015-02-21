@@ -1,7 +1,11 @@
 package tapestry
 
 import (
+<<<<<<< HEAD
 	"errors"
+=======
+	// "errors"
+>>>>>>> 8a2102ebb62ad8a33e7153f0e88b604ab39c0b67
 	"fmt"
 )
 
@@ -80,7 +84,41 @@ func (local *TapestryNode) Join(otherNode Node) error {
 
 	// TODO: Students should implement the backpointer traversal portion of Join
 
-	return nil
+	/*
+		"The nodes returned by AddNodeMulticast() will go into the
+		Joining node's routing table, but all these nodes are of length n
+		and greater. This means that rows 0 through n-1 of the node's
+		routing table still need to be filled via backpointer traversal."
+	*/
+
+	level := SharedPrefixLength(local.node.Id, root.Id)
+	for {
+
+		for _, n := range neighbours {
+			local.addRoute(n)
+		}
+
+		if level >= 0 {
+			nextNeighbours := make([]Node, 0)
+			for _, neighbour := range neighbours {
+				result, err := local.tapestry.getBackpointers(neighbour, local.node, level-1)
+
+				if err != nil {
+					// TODO handle this
+				}
+
+				nextNeighbours = append(nextNeighbours, result...)
+			}
+
+			neighbours = nextNeighbours
+		} else {
+			break
+		}
+
+		level--
+	}
+
+	return err // TODO
 }
 
 /*
@@ -141,6 +179,23 @@ func (local *TapestryNode) AddNode(node Node) (neighbourset []Node, err error) {
 func (local *TapestryNode) AddNodeMulticast(newnode Node, level int) (neighbours []Node, err error) {
 	Debug.Printf("Add node multicast %v at level %v\n", newnode, level)
 	// TODO: Students should implement this
+	targets := local.table.GetLevel(level)
+	results := make([]Node, 0)
+	for _, target := range targets {
+		result, err := local.tapestry.addNodeMulticast(
+			target, newnode, level+1)
+		results = append(results, result...)
+
+		if err != nil {
+			// TODO
+		}
+	}
+	err = local.Transfer(newnode, nil)
+	if err != nil {
+		// TODO
+	}
+
+	targets = append(targets, results...)
 	return
 }
 
@@ -175,9 +230,16 @@ func (local *TapestryNode) GetNextHop(id ID) (morehops bool, nexthop Node, err e
 
 	// If calling nexthop is worse than the current one, it errors out.
 	// TODO: Is this the potential erorr?
+<<<<<<< HEAD
 	if id.BetterChoice(local.node.Id, nexthop.Id) {
 		err = errors.New("Next hop was not better than the previous")
 	}
+=======
+	// if id.BetterChoice(local.node.Id, nexthop.Id) {
+	//	err = errors.New("Next hop was not better than the previous")
+	// }
+
+>>>>>>> 8a2102ebb62ad8a33e7153f0e88b604ab39c0b67
 	return
 }
 
@@ -271,7 +333,12 @@ func (local *TapestryNode) Fetch(key string) (isRoot bool, replicas []Node, err 
 */
 func (local *TapestryNode) Transfer(from Node, replicamap map[string][]Node) error {
 	// TODO: Students should implement this
-	return nil
+
+	local.store.RegisterAll(replicamap, TIMEOUT)
+
+	// TODO: when is it appropiate to add to local table?
+	err := local.addRoute(from)
+	return err
 }
 
 /*
@@ -283,6 +350,16 @@ func (local *TapestryNode) Transfer(from Node, replicamap map[string][]Node) err
 */
 func (local *TapestryNode) addRoute(node Node) (err error) {
 	// TODO: Students should implement this
+	added, prev := local.table.Add(node)
+
+	if added {
+		// TODO notify
+	}
+
+	if prev != nil {
+		// TODO notify old node
+	}
+
 	return
 }
 

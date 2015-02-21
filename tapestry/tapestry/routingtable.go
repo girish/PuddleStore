@@ -1,6 +1,7 @@
 package tapestry
 
 import (
+	// "fmt"
 	"sync"
 )
 
@@ -61,6 +62,14 @@ func (t *RoutingTable) Add(node Node) (added bool, previous *Node) {
 
 	// Find table slot.
 	i := SharedPrefixLength(node.Id, t.local.Id)
+
+	if i == DIGITS {
+		added = false
+		t.mutex.Unlock()
+		return
+	}
+
+	// fmt.Printf("%v, %v\n", i, node.Id[i])
 	slot := t.rows[i][node.Id[i]]
 
 	// Check if it exists; if it does return false
@@ -98,6 +107,12 @@ func (t *RoutingTable) Remove(node Node) (wasRemoved bool) {
 
 	// Get the table slot
 	i := SharedPrefixLength(node.Id, t.local.Id)
+	if i == DIGITS {
+		// TODO check if you should ever delete youself like this
+		wasRemoved = false
+		t.mutex.Unlock()
+		return
+	}
 	slot := t.rows[i][node.Id[i]]
 
 	// Find and remove node
@@ -112,7 +127,6 @@ func (t *RoutingTable) Remove(node Node) (wasRemoved bool) {
 
 	// Return false if node was not found.
 	wasRemoved = false
-
 	t.mutex.Unlock()
 
 	return
