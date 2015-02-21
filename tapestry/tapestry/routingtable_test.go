@@ -1,9 +1,9 @@
 package tapestry
 
 import (
-	"fmt"
-	"strings"
-	//"testing"
+	//"fmt"
+	//"strings"
+	"testing"
 
 )
 
@@ -44,9 +44,7 @@ func TestSimpleAddAndRemove(t *testing.T) {
 		}
 	}
 }
-<<<<<<< HEAD
 */
-=======
 
 // NOTE: This needs to set digits to 5 to work!
 func TestGetNextHop(t *testing.T) {
@@ -54,4 +52,3 @@ func TestGetNextHop(t *testing.T) {
 		// t.Errorf("Test wont work unless DIGITS is set to 5.")
 	}
 }
->>>>>>> 8a2102ebb62ad8a33e7153f0e88b604ab39c0b67

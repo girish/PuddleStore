@@ -1,7 +1,7 @@
 package tapestry
 
 import (
-	"errors"
+	//"errors"
 	"fmt"
 )
 
