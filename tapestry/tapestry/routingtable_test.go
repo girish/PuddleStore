@@ -1,20 +1,14 @@
 package tapestry
 
 import (
-	"fmt"
-	"strings"
 	"testing"
 )
 
-func printTable(table *RoutingTable) {
-	id := table.local.Id.String()
-	for i, row := range table.rows {
-		for j, slot := range row {
-			for _, node := range *slot {
-				fmt.Printf(" %v%v  %v: %v\n", id[:i], strings.Repeat(" ", DIGITS-i+1), Digit(j), node.Id.String())
-			}
-		}
+func equal_ids(id1, id2 ID) bool {
+	if SharedPrefixLength(id1, id2) == DIGITS {
+		return true
 	}
+	return false
 }
 
 // Adds 100,000 nodes to the table and removes them, checking
@@ -36,9 +30,20 @@ func TestSimpleAddAndRemove(t *testing.T) {
 
 	for i := 0; i < DIGITS; i++ {
 		for j := 0; j < BASE; j++ {
-			if len(*(table.rows[i][j])) != 0 {
+			if len(*(table.rows[i][j])) > 1 {
+				t.Errorf("Nodes where not deleted from table.")
+			}
+			if len(*(table.rows[i][j])) == 1 &&
+				!equal_ids(me.Id, (*(table.rows[i][j]))[0].Id) {
 				t.Errorf("Nodes where not deleted from table.")
 			}
 		}
+	}
+}
+
+// NOTE: This needs to set digits to 5 to work!
+func TestGetNextHop(t *testing.T) {
+	if DIGITS != 5 {
+		// t.Errorf("Test wont work unless DIGITS is set to 5.")
 	}
 }

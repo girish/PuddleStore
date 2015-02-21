@@ -1,10 +1,7 @@
 package tapestry
 
 import (
-<<<<<<< HEAD
-=======
-	"errors"
->>>>>>> d96ff3bfb785fa81de15322446b062d021fe6e55
+	// "errors"
 	"fmt"
 )
 
@@ -83,7 +80,41 @@ func (local *TapestryNode) Join(otherNode Node) error {
 
 	// TODO: Students should implement the backpointer traversal portion of Join
 
-	return nil
+	/*
+		"The nodes returned by AddNodeMulticast() will go into the
+		Joining node's routing table, but all these nodes are of length n
+		and greater. This means that rows 0 through n-1 of the node's
+		routing table still need to be filled via backpointer traversal."
+	*/
+
+	level := SharedPrefixLength(local.node.Id, root.Id)
+	for {
+
+		for _, n := range neighbours {
+			local.addRoute(n)
+		}
+
+		if level >= 0 {
+			nextNeighbours := make([]Node, 0)
+			for _, neighbour := range neighbours {
+				result, err := local.tapestry.getBackpointers(neighbour, local.node, level-1)
+
+				if err != nil {
+					// TODO handle this
+				}
+
+				nextNeighbours = append(nextNeighbours, result...)
+			}
+
+			neighbours = nextNeighbours
+		} else {
+			break
+		}
+
+		level--
+	}
+
+	return err // TODO
 }
 
 /*
@@ -144,6 +175,23 @@ func (local *TapestryNode) AddNode(node Node) (neighbourset []Node, err error) {
 func (local *TapestryNode) AddNodeMulticast(newnode Node, level int) (neighbours []Node, err error) {
 	Debug.Printf("Add node multicast %v at level %v\n", newnode, level)
 	// TODO: Students should implement this
+	targets := local.table.GetLevel(level)
+	results := make([]Node, 0)
+	for _, target := range targets {
+		result, err := local.tapestry.addNodeMulticast(
+			target, newnode, level+1)
+		results = append(results, result...)
+
+		if err != nil {
+			// TODO
+		}
+	}
+	err = local.Transfer(newnode, nil)
+	if err != nil {
+		// TODO
+	}
+
+	targets = append(targets, results...)
 	return
 }
 
@@ -168,8 +216,6 @@ func (local *TapestryNode) NotifyLeave(from Node, replacement *Node) (err error)
 */
 func (local *TapestryNode) GetNextHop(id ID) (morehops bool, nexthop Node, err error) {
 	// TODO: Students should implement this
-<<<<<<< HEAD
-=======
 
 	// Call routingtable.go method
 	nexthop = local.table.GetNextHop(id)
@@ -180,11 +226,10 @@ func (local *TapestryNode) GetNextHop(id ID) (morehops bool, nexthop Node, err e
 
 	// If calling nexthop is worse than the current one, it errors out.
 	// TODO: Is this the potential erorr?
-	if id.BetterChoice(local.node.Id, nexthop.Id) {
-		err = errors.New("Next hop was not better than the previous")
-	}
+	// if id.BetterChoice(local.node.Id, nexthop.Id) {
+	//	err = errors.New("Next hop was not better than the previous")
+	// }
 
->>>>>>> d96ff3bfb785fa81de15322446b062d021fe6e55
 	return
 }
 
@@ -278,7 +323,12 @@ func (local *TapestryNode) Fetch(key string) (isRoot bool, replicas []Node, err 
 */
 func (local *TapestryNode) Transfer(from Node, replicamap map[string][]Node) error {
 	// TODO: Students should implement this
-	return nil
+
+	local.store.RegisterAll(replicamap, TIMEOUT)
+
+	// TODO: when is it appropiate to add to local table?
+	err := local.addRoute(from)
+	return err
 }
 
 /*
@@ -290,6 +340,16 @@ func (local *TapestryNode) Transfer(from Node, replicamap map[string][]Node) err
 */
 func (local *TapestryNode) addRoute(node Node) (err error) {
 	// TODO: Students should implement this
+	added, prev := local.table.Add(node)
+
+	if added {
+		// TODO notify
+	}
+
+	if prev != nil {
+		// TODO notify old node
+	}
+
 	return
 }
 
@@ -303,9 +363,6 @@ func (local *TapestryNode) addRoute(node Node) (err error) {
 func (local *TapestryNode) findRoot(start Node, id ID) (Node, error) {
 	Debug.Printf("Routing to %v\n", id)
 	// TODO: Students should implement this
-<<<<<<< HEAD
-	return local.node, nil
-=======
 
 	// I hate Go's scoping </3
 	next := start
@@ -327,5 +384,4 @@ func (local *TapestryNode) findRoot(start Node, id ID) (Node, error) {
 
 	// TODO: Again, what error goes here?
 	return current, nil
->>>>>>> d96ff3bfb785fa81de15322446b062d021fe6e55
 }

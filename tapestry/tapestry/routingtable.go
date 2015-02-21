@@ -1,6 +1,7 @@
 package tapestry
 
 import (
+	// "fmt"
 	"sync"
 )
 
@@ -61,6 +62,14 @@ func (t *RoutingTable) Add(node Node) (added bool, previous *Node) {
 
 	// Find table slot.
 	i := SharedPrefixLength(node.Id, t.local.Id)
+
+	if i == DIGITS {
+		added = false
+		t.mutex.Unlock()
+		return
+	}
+
+	// fmt.Printf("%v, %v\n", i, node.Id[i])
 	slot := t.rows[i][node.Id[i]]
 
 	// Check if it exists; if it does return false
@@ -96,10 +105,14 @@ func (t *RoutingTable) Remove(node Node) (wasRemoved bool) {
 
 	// TODO: Students should implement this
 
-<<<<<<< HEAD
-=======
 	// Get the table slot
 	i := SharedPrefixLength(node.Id, t.local.Id)
+	if i == DIGITS {
+		// TODO check if you should ever delete youself like this
+		wasRemoved = false
+		t.mutex.Unlock()
+		return
+	}
 	slot := t.rows[i][node.Id[i]]
 
 	// Find and remove node
@@ -114,7 +127,6 @@ func (t *RoutingTable) Remove(node Node) (wasRemoved bool) {
 
 	// Return false if node was not found.
 	wasRemoved = false
->>>>>>> d96ff3bfb785fa81de15322446b062d021fe6e55
 	t.mutex.Unlock()
 
 	return
@@ -128,8 +140,6 @@ func (t *RoutingTable) GetLevel(level int) (nodes []Node) {
 	t.mutex.Lock()
 
 	// TODO: Students should implement this
-<<<<<<< HEAD
-=======
 	row := t.rows[level]
 	for i := 0; i < BASE; i++ {
 		for j := 0; j < len(*row[i]); j++ {
@@ -138,7 +148,6 @@ func (t *RoutingTable) GetLevel(level int) (nodes []Node) {
 			}
 		}
 	}
->>>>>>> d96ff3bfb785fa81de15322446b062d021fe6e55
 
 	t.mutex.Unlock()
 
@@ -153,8 +162,6 @@ func (t *RoutingTable) GetNextHop(id ID) (node Node) {
 	t.mutex.Lock()
 
 	// TODO: Students should implement this
-<<<<<<< HEAD
-=======
 	level := SharedPrefixLength(id, t.local.Id)
 	row := t.rows[level]
 	col := level
@@ -162,7 +169,6 @@ func (t *RoutingTable) GetNextHop(id ID) (node Node) {
 		col = (col + 1) % BASE
 	}
 	node = (*(row[col]))[0]
->>>>>>> d96ff3bfb785fa81de15322446b062d021fe6e55
 
 	t.mutex.Unlock()
 
