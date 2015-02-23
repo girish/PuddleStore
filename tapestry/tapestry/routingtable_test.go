@@ -8,9 +8,8 @@ import (
 
 // Adds 100,000 nodes to the table and removes them, checking
 // that all where deleted.
-/*
+
 func TestSimpleAddAndRemove(t *testing.T) {
-	// We need more stuff done before doing this.
 	NUM_NODES := 100000
 	me := Node{RandomID(), ""}
 	table := NewRoutingTable(me)
@@ -36,11 +35,8 @@ func TestSimpleAddAndRemove(t *testing.T) {
 		}
 	}
 }
-*/
 
-// NOTE: This needs to set digits to 5 to work!
 func TestGetNextHop(t *testing.T) {
-	if DIGITS != 5 {
-		// t.Errorf("Test wont work unless DIGITS is set to 5.")
-	}
+	// This is checked along with FindRoot() at
+	// tapestry-local_test.go
 }

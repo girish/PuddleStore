@@ -246,6 +246,12 @@ func (local *TapestryNode) NotifyLeave(from Node, replacement *Node) (err error)
 	Debug.Printf("Received leave notification from %v with replacement node %v\n", from, replacement)
 
 	// TODO: Students should implement this
+	local.table.Remove(from)
+	local.RemoveBackpointer(from)
+
+	if replacement != nil {
+		local.addRoute(*replacement)
+	}
 	return
 }
 
