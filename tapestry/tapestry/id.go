@@ -105,7 +105,7 @@ func (id ID) BetterChoice(first ID, second ID) bool {
 		}
 		//fmt.Printf("The target is %v, then fDistance: %v and sDistance: %v\n", target, fDistance, sDistance)
 		if fDistance == sDistance {
-			if index == DIGITS {
+			if index == DIGITS - 1 {
 				return false
 			} else {
 				index++
