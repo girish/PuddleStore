@@ -163,7 +163,7 @@ func (t *RoutingTable) GetNextHop(id ID) (node Node) {
 	level := SharedPrefixLength(id, t.local.Id)
 	row := t.rows[level]
 	// fmt.Printf("%v: %v y %v\n", id, level, id[level])
-	col := id[level] // <- porque empiezas de aqui y no de 0? y esto te va a dar un overflow porque hay mas niveles que bases
+	col := id[level] 
 	for len(*(row[col])) == 0 {
 		col = (col + 1) % BASE
 		// fmt.Printf("%v\n", col)
@@ -190,8 +190,9 @@ func (t *RoutingTable) GetNextHop(id ID) (node Node) {
 			node = (*(row[col]))[1]
 		} else if id.BetterChoice((*(row[col]))[2].Id, (*(row[col]))[0].Id) &&
 			id.BetterChoice((*(row[col]))[2].Id, (*(row[col]))[1].Id) {
-			fmt.Printf("3\n")
+			fmt.Printf("3, comparing id: %v with %v & %v and %v & %v\n", id, (*(row[col]))[2].Id, (*(row[col]))[0].Id, (*(row[col]))[2].Id, (*(row[col]))[1].Id)
 			node = (*(row[col]))[2]
+			fmt.Printf("Returning %v\n", node.Id)
 		} else {
 			fmt.Printf("Should never be here\n")
 			node = (*(row[col]))[0]

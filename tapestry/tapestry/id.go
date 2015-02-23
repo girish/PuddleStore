@@ -77,6 +77,7 @@ func SharedPrefixLength(a ID, b ID) (i int) {
 */
 func (id ID) BetterChoice(first ID, second ID) bool {
 	// TODO: Students should implement this
+	//fmt.Printf("id:%v,first: %v,second: %v\n", id, first, second)
 	fPrefix := SharedPrefixLength(first, id)
 	sPrefix := SharedPrefixLength(second, id)
 	if (fPrefix != sPrefix || (sPrefix == DIGITS && fPrefix == DIGITS)) {
@@ -85,6 +86,7 @@ func (id ID) BetterChoice(first ID, second ID) bool {
 	}
 	//So they are the same, but not as long as DIGITS we need to figure out which one is better
 	index := sPrefix
+	start := id[index]
 	target := id[index]
 	madeAChoice := false
 	for !madeAChoice {
@@ -95,14 +97,16 @@ func (id ID) BetterChoice(first ID, second ID) bool {
 		sDistance := 0
 		for sDigit != target {
 			sDistance++
-			sDigit++
-			sDigit = sDigit % BASE
+			target++
+			target = target % BASE
 		}
+		target = start
 		for fDigit != target {
 			fDistance++
-			fDigit++
-			fDigit = fDigit % BASE
+			target++
+			target = target % BASE
 		}
+
 		//fmt.Printf("The target is %v, then fDistance: %v and sDistance: %v\n", target, fDistance, sDistance)
 		if fDistance == sDistance {
 			if index == DIGITS - 1 {
@@ -110,8 +114,10 @@ func (id ID) BetterChoice(first ID, second ID) bool {
 			} else {
 				index++
 				target = id[index]
+				start = id[index]
 			}
 		} else {
+			//fmt.Printf("fDistance: %v, sDistance: %v, target: %v, fDigit: %v, sDigit: %v\n", fDistance, sDistance, target, fDigit, sDigit)
 			return fDistance < sDistance
 		} 
 	} 
