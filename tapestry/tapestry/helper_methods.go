@@ -8,6 +8,13 @@ import (
 
 var port int
 
+func equal_ids(id1, id2 ID) bool {
+	if SharedPrefixLength(id1, id2) == DIGITS {
+		return true
+	}
+	return false
+}
+
 func printTable(table *RoutingTable) {
 	fmt.Printf("RoutingTable for node %v\n", table.local)
 	id := table.local.Id.String()
@@ -31,4 +38,16 @@ func makeTapestryNode(id ID, addr string, t *testing.T) *TapestryNode {
 
 	port++
 	return tapestry.local
+}
+
+// Prints the backpointers
+func printBackpointers(b *Backpointers) {
+	bp := b
+	fmt.Printf("Backpointers for node %v\n", bp.local)
+	for i, set := range bp.sets {
+		for _, node := range set.Nodes() {
+			fmt.Printf(" %v %v: %v\n", i, node.Address, node.Id.String())
+		}
+	}
+	fmt.Printf("\n\n")
 }

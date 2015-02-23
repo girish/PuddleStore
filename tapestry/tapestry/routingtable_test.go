@@ -4,15 +4,7 @@ import (
 	//"fmt"
 	//"strings"
 	"testing"
-
 )
-
-func equal_ids(id1, id2 ID) bool {
-	if SharedPrefixLength(id1, id2) == DIGITS {
-		return true
-	}
-	return false
-}
 
 // Adds 100,000 nodes to the table and removes them, checking
 // that all where deleted.
