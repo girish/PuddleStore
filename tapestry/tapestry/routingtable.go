@@ -138,7 +138,6 @@ func (t *RoutingTable) Remove(node Node) (wasRemoved bool) {
 func (t *RoutingTable) GetLevel(level int) (nodes []Node) {
 
 	t.mutex.Lock()
-
 	// TODO: Students should implement this
 	row := t.rows[level]
 	for i := 0; i < BASE; i++ {
@@ -148,7 +147,6 @@ func (t *RoutingTable) GetLevel(level int) (nodes []Node) {
 			}
 		}
 	}
-
 	t.mutex.Unlock()
 
 	return
