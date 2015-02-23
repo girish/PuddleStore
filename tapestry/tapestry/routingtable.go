@@ -1,7 +1,7 @@
 package tapestry
 
 import (
-	// "fmt"
+	"fmt"
 	"sync"
 )
 
@@ -164,11 +164,41 @@ func (t *RoutingTable) GetNextHop(id ID) (node Node) {
 	// TODO: Students should implement this
 	level := SharedPrefixLength(id, t.local.Id)
 	row := t.rows[level]
-	col := level // <- porque empiezas de aqui y no de 0? y esto te va a dar un overflow porque hay mas niveles que bases
+	// fmt.Printf("%v: %v y %v\n", id, level, id[level])
+	col := id[level] // <- porque empiezas de aqui y no de 0? y esto te va a dar un overflow porque hay mas niveles que bases
 	for len(*(row[col])) == 0 {
 		col = (col + 1) % BASE
+		// fmt.Printf("%v\n", col)
 	}
-	node = (*(row[col]))[0]
+	// fmt.Printf("%v\n", col)
+
+	if len(*(row[col])) == 1 {
+		node = (*(row[col]))[0]
+	} else if len(*(row[col])) == 2 {
+		if id.BetterChoice((*(row[col]))[0].Id, (*(row[col]))[1].Id) {
+			node = (*(row[col]))[0]
+		} else {
+			node = (*(row[col]))[1]
+		}
+	} else { // Consider optimization if its too slow
+
+		if id.BetterChoice((*(row[col]))[0].Id, (*(row[col]))[1].Id) &&
+			id.BetterChoice((*(row[col]))[0].Id, (*(row[col]))[2].Id) {
+			fmt.Printf("1\n")
+			node = (*(row[col]))[0]
+		} else if id.BetterChoice((*(row[col]))[1].Id, (*(row[col]))[0].Id) &&
+			id.BetterChoice((*(row[col]))[1].Id, (*(row[col]))[2].Id) {
+			fmt.Printf("2\n")
+			node = (*(row[col]))[1]
+		} else if id.BetterChoice((*(row[col]))[2].Id, (*(row[col]))[0].Id) &&
+			id.BetterChoice((*(row[col]))[2].Id, (*(row[col]))[1].Id) {
+			fmt.Printf("3\n")
+			node = (*(row[col]))[2]
+		} else {
+			fmt.Printf("Should never be here\n")
+			node = (*(row[col]))[0]
+		}
+	}
 
 	t.mutex.Unlock()
 
