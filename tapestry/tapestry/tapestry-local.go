@@ -270,13 +270,19 @@ func (local *TapestryNode) GetNextHop(id ID) (morehops bool, nexthop Node, err e
 
 	// If all digits match (aka is equal), no more hops are needed.
 	sharedDigits := SharedPrefixLength(local.node.Id, nexthop.Id)
-	morehops = DIGITS != sharedDigits
+	// morehops = DIGITS != sharedDigits
+	if DIGITS == sharedDigits {
+		morehops = false
+		return
+	}
 
 	// If calling nexthop is worse than the current one, it errors out.
 	// TODO: Is this the potential erorr?
-	// if id.BetterChoice(local.node.Id, nexthop.Id) {
-	// 	err = errors.New("Next hop was not better than the previous")
-	// }
+	if id.BetterChoice(local.node.Id, nexthop.Id) {
+		morehops = false
+		//err = errors.New("Next hop was not better than the previous")
+	}
+	morehops = true
 	return
 }
 

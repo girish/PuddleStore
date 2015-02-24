@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"fmt"
+	// "math"
 	"math/big"
 	"math/rand"
 	"strconv"
 	"time"
-	"math"
 )
 
 /*
@@ -80,7 +80,7 @@ func (id ID) BetterChoice(first ID, second ID) bool {
 	//fmt.Printf("id:%v,first: %v,second: %v\n", id, first, second)
 	fPrefix := SharedPrefixLength(first, id)
 	sPrefix := SharedPrefixLength(second, id)
-	if (fPrefix != sPrefix || (sPrefix == DIGITS && fPrefix == DIGITS)) {
+	if fPrefix != sPrefix || (sPrefix == DIGITS && fPrefix == DIGITS) {
 		//If they are not the same or if they are the same in all the numbers then we return
 		return fPrefix > sPrefix
 	}
@@ -109,7 +109,7 @@ func (id ID) BetterChoice(first ID, second ID) bool {
 
 		//fmt.Printf("The target is %v, then fDistance: %v and sDistance: %v\n", target, fDistance, sDistance)
 		if fDistance == sDistance {
-			if index == DIGITS - 1 {
+			if index == DIGITS-1 {
 				return false
 			} else {
 				index++
@@ -119,8 +119,8 @@ func (id ID) BetterChoice(first ID, second ID) bool {
 		} else {
 			//fmt.Printf("fDistance: %v, sDistance: %v, target: %v, fDigit: %v, sDigit: %v\n", fDistance, sDistance, target, fDigit, sDigit)
 			return fDistance < sDistance
-		} 
-	} 
+		}
+	}
 	return false
 }
 
@@ -138,23 +138,50 @@ func (id ID) BetterChoice(first ID, second ID) bool {
 	Return true if a is closer than b.  Return false if b is closer than a, or if a == b.
 */
 func (id ID) Closer(first ID, second ID) bool {
-	// TODO: Students should implement this
-	firstNum := 0.0
-	secondNum := 0.0
-	idNum := 0.0
-	//I am assuming that all ids are DIGITS length
-	pow := 0
-	for i := DIGITS - 1; i >= 0; i-- {
-		firstNum += float64(first[i]) * math.Pow(BASE, float64(pow))
-		secondNum += float64(second[i]) * math.Pow(BASE, float64(pow))
-		idNum += float64(id[i]) * math.Pow(BASE, float64(pow))
-		pow++
+
+	firstNum := first.big()
+	secondNum := second.big()
+	idNum := id.big()
+
+	difF := big.NewInt(0)
+	difS := big.NewInt(0)
+
+	difF.Sub(firstNum, idNum)
+	difS.Sub(secondNum, idNum)
+	difF.Abs(difF)
+	difS.Abs(difS)
+
+	fmt.Println(first, second, id)
+	fmt.Println(firstNum, secondNum, idNum)
+
+	if difF.Cmp(difS) == -1 {
+		fmt.Println("-->", first, difF, firstNum)
+		fmt.Println(second, difS, secondNum)
+		return true
+	} else {
+		fmt.Println(first, difS, secondNum)
+		fmt.Println("-->", second, difS, secondNum)
+		return false
 	}
-	//fmt.Println(firstNum, secondNum, idNum)
-	difF := math.Abs(firstNum - idNum)
-	difS := math.Abs(secondNum - idNum)
-	fmt.Println(difF, difS)
-	return difF < difS
+	/*
+		// TODO: Students should implement this
+		firstNum := 0.0
+		secondNum := 0.0
+		idNum := 0.0
+		//I am assuming that all ids are DIGITS length
+		pow := 0
+		for i := DIGITS - 1; i >= 0; i-- {
+			firstNum += float64(first[i]) * math.Pow(BASE, float64(pow))
+			secondNum += float64(second[i]) * math.Pow(BASE, float64(pow))
+			idNum += float64(id[i]) * math.Pow(BASE, float64(pow))
+			pow++
+		}
+		//fmt.Println(firstNum, secondNum, idNum)
+		difF := math.Abs(firstNum - idNum)
+		difS := math.Abs(secondNum - idNum)
+		fmt.Println(difF, difS)
+		return difF < difS
+	*/
 }
 
 /*
