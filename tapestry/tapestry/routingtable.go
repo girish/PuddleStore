@@ -195,18 +195,18 @@ func (t *RoutingTable) GetNextHop(id ID) (node Node) {
 		}
 	} else { // Consider optimization if its too slow
 		if id.BetterChoice((*(row[col]))[0].Id, (*(row[col]))[1].Id) &&
-			id.BetterChoice((*(row[col]))[0].Id, (*(row[col]))[2].Id) &&
-			!equal_ids(t.local.Id, (*(row[col]))[0].Id) {
+			id.BetterChoice((*(row[col]))[0].Id, (*(row[col]))[2].Id) {
+			// !equal_ids(t.local.Id, (*(row[col]))[0].Id) {
 			fmt.Printf("1\n")
 			node = (*(row[col]))[0]
 		} else if id.BetterChoice((*(row[col]))[1].Id, (*(row[col]))[0].Id) &&
-			id.BetterChoice((*(row[col]))[1].Id, (*(row[col]))[2].Id) &&
-			!equal_ids(t.local.Id, (*(row[col]))[1].Id) {
+			id.BetterChoice((*(row[col]))[1].Id, (*(row[col]))[2].Id) {
+			// !equal_ids(t.local.Id, (*(row[col]))[1].Id) {
 			fmt.Printf("2\n")
 			node = (*(row[col]))[1]
 		} else if id.BetterChoice((*(row[col]))[2].Id, (*(row[col]))[0].Id) &&
-			id.BetterChoice((*(row[col]))[2].Id, (*(row[col]))[1].Id) &&
-			!equal_ids(t.local.Id, (*(row[col]))[2].Id) {
+			id.BetterChoice((*(row[col]))[2].Id, (*(row[col]))[1].Id) {
+			// !equal_ids(t.local.Id, (*(row[col]))[2].Id) {
 			fmt.Printf("3, comparing id: %v with %v & %v and %v & %v\n", id, (*(row[col]))[2].Id, (*(row[col]))[0].Id, (*(row[col]))[2].Id, (*(row[col]))[1].Id)
 			node = (*(row[col]))[2]
 			fmt.Printf("Returning %v\n", node.Id)

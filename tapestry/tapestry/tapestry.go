@@ -17,8 +17,10 @@ const RETRIES = 3  // The number of retries on failure. By default we have 3 ret
 const K = 10       // During neighbour traversal, trim the neighbourset to this size before fetching backpointers. By default this has a value of 10
 const SLOTSIZE = 3 // The each slot in the routing table should store this many nodes.  By default this is 3.
 
-const REPUBLISH = 10 * time.Second // object republish interval for nodes advertising objects
-const TIMEOUT = 25 * time.Second   // object timeout interval for nodes storing objects
+// Default = 10
+const REPUBLISH = 1 * time.Second // object republish interval for nodes advertising objects
+// Default = 25
+const TIMEOUT = 3 * time.Second // object timeout interval for nodes storing objects
 
 /*
 	Provides the private API for communicating with remote nodes

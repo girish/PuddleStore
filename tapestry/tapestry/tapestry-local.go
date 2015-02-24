@@ -169,8 +169,8 @@ func (local *TapestryNode) Publish(key string) (done chan bool, err error) {
 			select {
 			case <-done:
 				return
-			case <-time.After(time.Second * 1):
-				//republish the key every second.
+			case <-time.After(REPUBLISH): // <-- Aqui es REPUBLISH, no cada un segundo
+				//republish the key every second. <---- creo que no es un segundo
 				root, _ := local.findRoot(local.node, Hash(key))
 				local.tapestry.register(root, local.node, key)
 			}
@@ -461,8 +461,6 @@ func (local *TapestryNode) findRoot(start Node, id ID) (Node, error) {
 		current = next
 		hasNext, next, err = local.tapestry.getNextHop(current, id)
 
-		fmt.Printf("I am %v, next hop %v\n", current.Id, next.Id)
-
 		if err != nil {
 			// TODO: Notify who and what? If I got a node back then whats the problem?
 		}
@@ -471,7 +469,6 @@ func (local *TapestryNode) findRoot(start Node, id ID) (Node, error) {
 			break
 		}
 	}
-	fmt.Printf("returned %v\n", current.Id)
 
 	// TODO: Again, what error goes here?
 	return current, nil
