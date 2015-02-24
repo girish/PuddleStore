@@ -61,16 +61,16 @@ func (t *RoutingTable) Add(node Node) (added bool, previous *Node) {
 	//}
 
 	// Find table slot.
-	i := SharedPrefixLength(node.Id, t.local.Id)
+	level := SharedPrefixLength(node.Id, t.local.Id)
 
-	if i == DIGITS {
+	if level == DIGITS {
 		added = false
 		t.mutex.Unlock()
 		return
 	}
 
 	// fmt.Printf("%v, %v\n", i, node.Id[i])
-	slot := t.rows[i][node.Id[i]]
+	slot := t.rows[level][node.Id[level]]
 
 	// Check if it exists; if it does return false
 	for i := 0; i < len(*slot); i++ {
@@ -82,11 +82,16 @@ func (t *RoutingTable) Add(node Node) (added bool, previous *Node) {
 	}
 
 	// Append new slot and make sure theres a 3 node maximum.
-	*slot = append(*slot, node)
-	if len(*slot) > 3 {
-		previous = &(*slot)[1]
-		*slot = (*slot)[1:]
+
+	for i := 0; i <= level; i++ {
+		slot = t.rows[i][node.Id[i]]
+		*slot = append(*slot, node)
+		if len(*slot) > 3 {
+			previous = &(*slot)[2]
+			*slot = (*slot)[:2]
+		}
 	}
+
 	added = true
 
 	t.mutex.Unlock()
@@ -106,27 +111,33 @@ func (t *RoutingTable) Remove(node Node) (wasRemoved bool) {
 	// TODO: Students should implement this
 
 	// Get the table slot
-	i := SharedPrefixLength(node.Id, t.local.Id)
-	if i == DIGITS {
+	level := SharedPrefixLength(node.Id, t.local.Id)
+	if level == DIGITS {
 		// TODO check if you should ever delete youself like this
 		wasRemoved = false
 		t.mutex.Unlock()
 		return
 	}
-	slot := t.rows[i][node.Id[i]]
 
-	// Find and remove node
-	for i := 0; i < len(*slot); i++ {
-		if SharedPrefixLength((*slot)[i].Id, node.Id) == DIGITS {
-			*slot = append((*slot)[:i], (*slot)[i+1:]...) // This is remove in Go
-			wasRemoved = true
-			t.mutex.Unlock()
-			return
+	wasRemoved = false
+
+	for j := 0; j <= level; j++ {
+		slot := t.rows[j][node.Id[j]]
+
+		//slot := t.rows[i][node.Id[i]]
+
+		// Find and remove node
+		for i := 0; i < len(*slot); i++ {
+			if SharedPrefixLength((*slot)[i].Id, node.Id) == DIGITS {
+				*slot = append((*slot)[:i], (*slot)[i+1:]...) // This is remove in Go
+				wasRemoved = true
+				// t.mutex.Unlock()
+				// return
+			}
 		}
 	}
 
 	// Return false if node was not found.
-	wasRemoved = false
 	t.mutex.Unlock()
 
 	return
@@ -141,6 +152,9 @@ func (t *RoutingTable) GetLevel(level int) (nodes []Node) {
 	// TODO: Students should implement this
 	row := t.rows[level]
 	for i := 0; i < BASE; i++ {
+		if t.local.Id[level] == Digit(i) {
+			continue
+		}
 		for j := 0; j < len(*row[i]); j++ {
 			if SharedPrefixLength((*(row[i]))[j].Id, t.local.Id) != DIGITS {
 				nodes = append(nodes, (*(row[i]))[j]) // append node
@@ -163,7 +177,7 @@ func (t *RoutingTable) GetNextHop(id ID) (node Node) {
 	level := SharedPrefixLength(id, t.local.Id)
 	row := t.rows[level]
 	// fmt.Printf("%v: %v y %v\n", id, level, id[level])
-	col := id[level] 
+	col := id[level]
 	for len(*(row[col])) == 0 {
 		col = (col + 1) % BASE
 		// fmt.Printf("%v\n", col)
@@ -173,23 +187,26 @@ func (t *RoutingTable) GetNextHop(id ID) (node Node) {
 	if len(*(row[col])) == 1 {
 		node = (*(row[col]))[0]
 	} else if len(*(row[col])) == 2 {
-		if id.BetterChoice((*(row[col]))[0].Id, (*(row[col]))[1].Id) {
+		if id.BetterChoice((*(row[col]))[0].Id, (*(row[col]))[1].Id) &&
+			!equal_ids(t.local.Id, (*(row[col]))[0].Id) {
 			node = (*(row[col]))[0]
 		} else {
 			node = (*(row[col]))[1]
 		}
 	} else { // Consider optimization if its too slow
-
 		if id.BetterChoice((*(row[col]))[0].Id, (*(row[col]))[1].Id) &&
 			id.BetterChoice((*(row[col]))[0].Id, (*(row[col]))[2].Id) {
+			// !equal_ids(t.local.Id, (*(row[col]))[0].Id) {
 			fmt.Printf("1\n")
 			node = (*(row[col]))[0]
 		} else if id.BetterChoice((*(row[col]))[1].Id, (*(row[col]))[0].Id) &&
 			id.BetterChoice((*(row[col]))[1].Id, (*(row[col]))[2].Id) {
+			// !equal_ids(t.local.Id, (*(row[col]))[1].Id) {
 			fmt.Printf("2\n")
 			node = (*(row[col]))[1]
 		} else if id.BetterChoice((*(row[col]))[2].Id, (*(row[col]))[0].Id) &&
 			id.BetterChoice((*(row[col]))[2].Id, (*(row[col]))[1].Id) {
+			// !equal_ids(t.local.Id, (*(row[col]))[2].Id) {
 			fmt.Printf("3, comparing id: %v with %v & %v and %v & %v\n", id, (*(row[col]))[2].Id, (*(row[col]))[0].Id, (*(row[col]))[2].Id, (*(row[col]))[1].Id)
 			node = (*(row[col]))[2]
 			fmt.Printf("Returning %v\n", node.Id)

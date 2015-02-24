@@ -108,7 +108,10 @@ func (local *TapestryNode) Join(otherNode Node) error {
 				}
 
 				nextNeighbours = append(nextNeighbours, result...)
-				//nextNeighbours = append(nextNeighbours, neighbours...)
+
+				if len(result) == 0 {
+					nextNeighbours = append(nextNeighbours, neighbours...)
+				}
 			}
 
 			neighbours = nextNeighbours
@@ -167,8 +170,8 @@ func (local *TapestryNode) Publish(key string) (done chan bool, err error) {
 			select {
 			case <-done:
 				return
-			case <-time.After(time.Second * 1):
-				//republish the key every second.
+			case <-time.After(REPUBLISH): // <-- Aqui es REPUBLISH, no cada un segundo
+				//republish the key every second. <---- creo que no es un segundo
 				root, _ := local.findRoot(local.node, Hash(key))
 				local.tapestry.register(root, local.node, key)
 			}
@@ -187,6 +190,21 @@ func (local *TapestryNode) Publish(key string) (done chan bool, err error) {
 */
 func (local *TapestryNode) Lookup(key string) (nodes []Node, err error) {
 	// TODO: Students should implement this
+
+	for i := 0; i < RETRIES; i++ {
+		root, err := local.findRoot(local.node, Hash(key))
+		if err != nil {
+			continue
+		}
+
+		wasRoot, replicas, err := local.tapestry.fetch(root, key)
+
+		if wasRoot && err == nil {
+			nodes = replicas
+			break
+		}
+	}
+
 	return
 }
 
@@ -246,6 +264,12 @@ func (local *TapestryNode) NotifyLeave(from Node, replacement *Node) (err error)
 	Debug.Printf("Received leave notification from %v with replacement node %v\n", from, replacement)
 
 	// TODO: Students should implement this
+	local.table.Remove(from)
+	local.RemoveBackpointer(from)
+
+	if replacement != nil {
+		local.addRoute(*replacement)
+	}
 	return
 }
 
@@ -262,13 +286,19 @@ func (local *TapestryNode) GetNextHop(id ID) (morehops bool, nexthop Node, err e
 
 	// If all digits match (aka is equal), no more hops are needed.
 	sharedDigits := SharedPrefixLength(local.node.Id, nexthop.Id)
-	morehops = DIGITS != sharedDigits
+	// morehops = DIGITS != sharedDigits
+	if DIGITS == sharedDigits {
+		morehops = false
+		return
+	}
 
 	// If calling nexthop is worse than the current one, it errors out.
 	// TODO: Is this the potential erorr?
-	// if id.BetterChoice(local.node.Id, nexthop.Id) {
-	// 	err = errors.New("Next hop was not better than the previous")
-	// }
+	if id.BetterChoice(local.node.Id, nexthop.Id) {
+		morehops = false
+		//err = errors.New("Next hop was not better than the previous")
+	}
+	morehops = true
 	return
 }
 
@@ -340,6 +370,15 @@ func (local *TapestryNode) RemoveBadNodes(badnodes []Node) (err error) {
 */
 func (local *TapestryNode) Register(key string, replica Node) (isRoot bool, err error) {
 	// TODO: Students should implement this
+	root, _ := local.findRoot(local.node, Hash(key))
+	if !equal_ids(root.Id, local.node.Id) {
+		isRoot = false
+		return
+	}
+	isRoot = true
+
+	local.store.Register(key, replica, TIMEOUT)
+
 	return
 }
 
@@ -351,6 +390,14 @@ func (local *TapestryNode) Register(key string, replica Node) (isRoot bool, err 
 */
 func (local *TapestryNode) Fetch(key string) (isRoot bool, replicas []Node, err error) {
 	// TODO: Students should implement this
+	root, _ := local.findRoot(local.node, Hash(key))
+	if !equal_ids(root.Id, local.node.Id) {
+		isRoot = false
+		return
+	}
+	isRoot = true
+
+	replicas = local.store.Get(key)
 	return
 }
 
@@ -415,8 +462,6 @@ func (local *TapestryNode) findRoot(start Node, id ID) (Node, error) {
 		current = next
 		hasNext, next, err = local.tapestry.getNextHop(current, id)
 
-		fmt.Printf("I am %v, next hop %v\n", current.Id, next.Id)
-
 		if err != nil {
 			// TODO: Notify who and what? If I got a node back then whats the problem?
 		}
@@ -425,7 +470,6 @@ func (local *TapestryNode) findRoot(start Node, id ID) (Node, error) {
 			break
 		}
 	}
-	fmt.Printf("returned %v\n", current.Id)
 
 	// TODO: Again, what error goes here?
 	return current, nil

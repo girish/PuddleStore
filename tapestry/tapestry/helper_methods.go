@@ -40,6 +40,18 @@ func makeTapestryNode(id ID, addr string, t *testing.T) *TapestryNode {
 	return tapestry.local
 }
 
+func makeTapestry(id ID, addr string, t *testing.T) *Tapestry {
+
+	tapestry, err := start(id, port, addr)
+
+	if err != nil {
+		t.Errorf("Error while making a tapestry %v", err)
+	}
+
+	port++
+	return tapestry
+}
+
 // Prints the backpointers
 func printBackpointers(b *Backpointers) {
 	bp := b
