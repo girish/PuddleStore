@@ -84,8 +84,8 @@ func (t *RoutingTable) Add(node Node) (added bool, previous *Node) {
 	// Append new slot and make sure theres a 3 node maximum.
 	*slot = append(*slot, node)
 	if len(*slot) > 3 {
-		previous = &(*slot)[1]
-		*slot = (*slot)[1:]
+		previous = &(*slot)[2]
+		*slot = (*slot)[:2]
 	}
 	added = true
 
@@ -163,7 +163,7 @@ func (t *RoutingTable) GetNextHop(id ID) (node Node) {
 	level := SharedPrefixLength(id, t.local.Id)
 	row := t.rows[level]
 	// fmt.Printf("%v: %v y %v\n", id, level, id[level])
-	col := id[level] 
+	col := id[level]
 	for len(*(row[col])) == 0 {
 		col = (col + 1) % BASE
 		// fmt.Printf("%v\n", col)

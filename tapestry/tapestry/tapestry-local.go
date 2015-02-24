@@ -108,7 +108,9 @@ func (local *TapestryNode) Join(otherNode Node) error {
 				}
 
 				nextNeighbours = append(nextNeighbours, result...)
-				nextNeighbours = append(nextNeighbours, neighbours...)
+				if len(result) == 0 {
+					nextNeighbours = append(nextNeighbours, neighbours...)
+				}
 			}
 
 			neighbours = nextNeighbours
