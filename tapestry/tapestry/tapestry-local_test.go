@@ -14,7 +14,7 @@ func CheckFindRoot(node *TapestryNode, target ID, expected ID,
 }
 
 // NOTE: This needs to set digits to 4 to work!
-func TestFindRoot(t *testing.T) {
+func TestFindRootAndLeave(t *testing.T) {
 	if DIGITS != 4 {
 		t.Errorf("Test wont work unless DIGITS is set to 4.")
 	}
@@ -99,7 +99,7 @@ func TestFindRoot(t *testing.T) {
 	CheckFindRoot(node3, id, mainNode.node.Id, t)
 
 	// Check if after node leaves, tables get updated.
-	mainNode.Leave()
+	mainNode.tapestry.Leave()
 
 	id = ID{3, 0xf, 8, 0xa}
 	CheckFindRoot(node1, id, node1.node.Id, t)
@@ -114,7 +114,7 @@ func TestFindRoot(t *testing.T) {
 	CheckFindRoot(node2, id, node2.node.Id, t)
 	CheckFindRoot(node3, id, node2.node.Id, t)
 
-	node1.Leave()
-	node2.Leave()
-	node3.Leave()
+	node1.tapestry.Leave()
+	node2.tapestry.Leave()
+	node3.tapestry.Leave()
 }

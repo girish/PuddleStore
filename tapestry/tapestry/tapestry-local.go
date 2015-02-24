@@ -189,6 +189,21 @@ func (local *TapestryNode) Publish(key string) (done chan bool, err error) {
 */
 func (local *TapestryNode) Lookup(key string) (nodes []Node, err error) {
 	// TODO: Students should implement this
+
+	for i := 0; i < RETRIES; i++ {
+		root, err := local.findRoot(local.node, Hash(key))
+		if err != nil {
+			continue
+		}
+
+		wasRoot, replicas, err := local.tapestry.fetch(root, key)
+
+		if wasRoot && err == nil {
+			nodes = replicas
+			break
+		}
+	}
+
 	return
 }
 
@@ -354,6 +369,15 @@ func (local *TapestryNode) RemoveBadNodes(badnodes []Node) (err error) {
 */
 func (local *TapestryNode) Register(key string, replica Node) (isRoot bool, err error) {
 	// TODO: Students should implement this
+	root, _ := local.findRoot(local.node, Hash(key))
+	if !equal_ids(root.Id, local.node.Id) {
+		isRoot = false
+		return
+	}
+	isRoot = true
+
+	local.store.Register(key, replica, TIMEOUT)
+
 	return
 }
 
@@ -365,6 +389,14 @@ func (local *TapestryNode) Register(key string, replica Node) (isRoot bool, err 
 */
 func (local *TapestryNode) Fetch(key string) (isRoot bool, replicas []Node, err error) {
 	// TODO: Students should implement this
+	root, _ := local.findRoot(local.node, Hash(key))
+	if !equal_ids(root.Id, local.node.Id) {
+		isRoot = false
+		return
+	}
+	isRoot = true
+
+	replicas = local.store.Get(key)
 	return
 }
 
