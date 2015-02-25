@@ -162,6 +162,7 @@ func (local *TapestryNode) Publish(key string) (done chan bool, err error) {
 	done = make(chan bool)
 
 	root, err := local.findRoot(local.node, Hash(key))
+	fmt.Printf("We are publishing from %v, for %v, to: %v\n", local.node.Id, key, root.Id)
 	local.tapestry.register(root, local.node, key)
 
 	//Periodically checking
@@ -170,8 +171,7 @@ func (local *TapestryNode) Publish(key string) (done chan bool, err error) {
 			select {
 			case <-done:
 				return
-			case <-time.After(REPUBLISH): // <-- Aqui es REPUBLISH, no cada un segundo
-				//republish the key every second. <---- creo que no es un segundo
+			case <-time.After(REPUBLISH): // <-- Aqui es REPUBLISH, no cada un segundo, <--ok ahuevo
 				root, _ := local.findRoot(local.node, Hash(key))
 				local.tapestry.register(root, local.node, key)
 			}
@@ -193,6 +193,7 @@ func (local *TapestryNode) Lookup(key string) (nodes []Node, err error) {
 
 	for i := 0; i < RETRIES; i++ {
 		root, err := local.findRoot(local.node, Hash(key))
+		fmt.Printf("I am %v, looking for %v and the root is %v\n", local.node.Id, key, root.Id)
 		if err != nil {
 			continue
 		}

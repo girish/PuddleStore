@@ -1,7 +1,7 @@
 package tapestry
 
 import (
-	//	"fmt"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -75,19 +75,38 @@ func TestPublishAndRegister(t *testing.T) {
 	// of this object after node0 leaves after TIMEOUT seconds.
 	root := FindRootOfHash([]*Tapestry{node1, node2, node3}, Hash("chair"))
 	node0.Leave()
+	fmt.Printf("The root is: %v and the node0 id is: %v", root.local.node.Id, node0.local.node.Id)
 	if root == nil {
 		t.Errorf("Could not find Root of Hash")
 	} else {
-		replicas := root.local.store.Get("chair")
+		replicas := root.local.store.Get("spoon")
 		if len(replicas) == 0 && len(replicas) > 1 {
 			t.Errorf("Replica of 'spoon' not in root node. What?")
 		} else {
 			time.Sleep(time.Second * 5)
-			replicas = root.local.store.Get("chair")
+			replicas = root.local.store.Get("spoon")
 			if len(replicas) != 0 {
 				t.Errorf("Replica of 'spoon' is in root node after node containing it left.")
 			}
 		}
+	}
+	//We add a new node that contains spoon and we should find it.
+	id = ID{0x5, 2, 0xa, 0xa}
+	node4 := makeTapestry(id, node2.local.node.Address, t)
+	node4.Store("spoon", []byte("cuchara"))
+	time.Sleep(time.Second * 5)
+	replicas, _ := node1.local.tapestry.Get("spoon")
+	fmt.Printf("id of root is: %v\n", root.local.node.Id)
+	// printTable(node4.local.table)
+	// printBackpointers(node4.local.backpointers)
+	// printTable(node1.local.table)
+	// printBackpointers(node1.local.backpointers)
+	// printTable(node2.local.table)
+	// printBackpointers(node2.local.backpointers)
+	// printTable(node3.local.table)
+	// printBackpointers(node3.local.backpointers)
+	if len(replicas) == 0 {
+		t.Errorf("'spoon' is not there even after a new node containing it joined")
 	}
 
 	node1.Leave()
@@ -100,7 +119,7 @@ func TestPutAndGet(t *testing.T) {
 		t.Errorf("Test wont work unless DIGITS is set to 4.")
 	}
 
-	port = 58000
+	port = 58001
 	id := ID{5, 8, 3, 15}
 	node0 := makeTapestry(id, "", t)
 	id = ID{7, 0, 0xd, 1}
