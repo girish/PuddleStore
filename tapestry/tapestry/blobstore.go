@@ -91,3 +91,15 @@ func (bs *BlobStore) Delete(key string) bool {
 	delete(bs.blobs, key)
 	return exists
 }
+
+/*
+   Remove all blobs and unregister them all
+*/
+func (bs *BlobStore) DeleteAll() {
+	// unregister every blob
+	for _, blob := range bs.blobs {
+		blob.done <- true
+	}
+	// clear the map
+	bs.blobs = make(map[string]Blob)
+}

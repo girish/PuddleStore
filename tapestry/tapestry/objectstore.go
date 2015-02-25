@@ -79,6 +79,10 @@ func (store *ObjectStore) Unregister(key string, replica Node) bool {
 	_, existed := store.data[key][replica]
 	delete(store.data[key], replica)
 
+	if existed && len(store.data[key]) == 0 {
+		delete(store.data, key)
+	}
+
 	store.mutex.Unlock()
 
 	return existed
@@ -148,6 +152,9 @@ func (store *ObjectStore) newTimeout(key string, replica Node, timeout time.Dura
 		if exists {
 			timer.Stop()
 			delete(store.data[key], replica)
+			if len(store.data[key]) == 0 {
+				delete(store.data, key)
+			}
 		}
 
 		store.mutex.Unlock()

@@ -92,6 +92,7 @@ func start(id ID, port int, connectTo string) (tapestry *Tapestry, err error) {
 	Leave the tapestry.  In the current implementation, this method may only be called once
 */
 func (tapestry *Tapestry) Leave() {
+	tapestry.blobstore.DeleteAll()
 	tapestry.local.Leave()
 	tapestry.server.listener.Close()
 }
