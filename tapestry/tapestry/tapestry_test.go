@@ -32,7 +32,15 @@ func FindRootOfHash(nodes []*Tapestry, hash ID) *Tapestry {
 
 	return nil
 }
+/*
+1) This test first adds several nodes, and adds several objects to the nodes.
+It then checks for the existance of objects from several nodes.
 
+2)Then it deletes one node and makes sure that the object it had
+"spoon" is no longer available
+
+3)Then a new node with the "spoon" object joins and makes sure that it is available through another node.
+*/
 func TestPublishAndRegister(t *testing.T) {
 	if DIGITS != 4 {
 		t.Errorf("Test wont work unless DIGITS is set to 4.")
@@ -74,8 +82,9 @@ func TestPublishAndRegister(t *testing.T) {
 	// Root node of Hash(spoon) should no longer have a record
 	// of this object after node0 leaves after TIMEOUT seconds.
 	root := FindRootOfHash([]*Tapestry{node1, node2, node3}, Hash("chair"))
+	fmt.Printf("The root is: %v and the node0 id is: %v", root, node0.local.node.Id)
 	node0.Leave()
-	fmt.Printf("The root is: %v and the node0 id is: %v", root.local.node.Id, node0.local.node.Id)
+	//fmt.Printf("The root is: %v and the node0 id is: %v", root.local.node.Id, node0.local.node.Id)
 	if root == nil {
 		t.Errorf("Could not find Root of Hash")
 	} else {
@@ -113,13 +122,93 @@ func TestPublishAndRegister(t *testing.T) {
 	node2.Leave()
 	node3.Leave()
 }
+/*
+This test inserts several nodes and objects and then inserts others to make sure that the root 
+changes to the new nodes.
+
+At the end it also makes sure that there is no replica in the previous node after the timeout.
+*/
+func TestChangeRoot(t *testing.T) {
+	if DIGITS != 4 {
+		t.Errorf("Test wont work unless DIGITS is set to 4.")
+		return
+	}
+	if TIMEOUT > 3*time.Second && REPUBLISH > 2*time.Second {
+		t.Errorf("Test will take too long unless TIMEOUT is set to 3 and REPUBLISH is set to 2.")
+		return
+	}
+	fmt.Println("Hello")
+	port = 58000
+	id := ID{5, 8, 3, 15}
+	node0 := makeTapestry(id, "", t)
+	id = ID{7, 0, 0xd, 1}
+	node1 := makeTapestry(id, node0.local.node.Address, t)
+	id = ID{9, 0, 0xf, 5}
+	node2 := makeTapestry(id, node0.local.node.Address, t)
+	id = ID{0xb, 0, 0xf, 0xa}
+	node3 := makeTapestry(id, node0.local.node.Address, t)
+	
+	
+	node0.Store("spoon", []byte("cuchara"))
+	time.Sleep(time.Millisecond * 200)
+	node1.Store("table", []byte("mesa"))
+	time.Sleep(time.Millisecond * 200)
+	node2.Store("chair", []byte("silla"))
+	time.Sleep(time.Millisecond * 200)
+	node3.Store("fork", []byte("tenedor"))
+	time.Sleep(time.Millisecond * 200)
+
+	
+	//The root for the node is 
+	root,_ := node3.local.findRoot(node3.local.node, Hash("fork"))
+	if !equal_ids(root.Id, node0.local.node.Id) {
+		t.Errorf("The root for the spoon is not node0, its %v\n", root.Id)
+	}
+	//Now we insert a new node
+	id = ID{0x5, 2, 0xa, 0xa}
+	node4 := makeTapestry(id, node2.local.node.Address, t)
+	node4.Store("napkin", []byte("servilleta"))
+	time.Sleep(TIMEOUT + 1)
+
+	// //The root for spoon should have changed to node4
+	fmt.Printf("hash for fork: %v\n", Hash("fork"))
+	fmt.Printf("hash for spoon: %v\n", Hash("spoon"))
+	fmt.Printf("hash for table: %v\n", Hash("table"))
+	fmt.Printf("hash for chair: %v\n", Hash("chair"))
+	root2,_ := node2.local.findRoot(node2.local.node, Hash("fork"))
+	if !equal_ids(root2.Id, node4.local.node.Id) {
+		t.Errorf("The root for the spoon is not node4, its %v\n", root2.Id)
+	}
+	//We now make sure that the replica is no longer in the previous node
+	replica := node0.local.store.Get("fork")
+	if len(replica) != 0 {
+		t.Errorf("This node still has a replica for another node %v", replica)
+	}
+
+	// printTable(node4.local.table)
+	// printBackpointers(node4.local.backpointers)
+	printTable(node1.local.table)
+	printBackpointers(node1.local.backpointers)
+	printTable(node2.local.table)
+	printBackpointers(node2.local.backpointers)
+	printTable(node3.local.table)
+	printBackpointers(node3.local.backpointers)
+	printTable(node0.local.table)
+	printBackpointers(node0.local.backpointers)
+	node1.Leave()
+	node2.Leave()
+	node3.Leave()
+	//node4.Leave()
+	node0.Leave()
+	
+}
 
 func TestPutAndGet(t *testing.T) {
 	if DIGITS != 4 {
 		t.Errorf("Test wont work unless DIGITS is set to 4.")
 	}
 
-	port = 58001
+	port = 58005
 	id := ID{5, 8, 3, 15}
 	node0 := makeTapestry(id, "", t)
 	id = ID{7, 0, 0xd, 1}

@@ -187,8 +187,8 @@ func (t *RoutingTable) GetNextHop(id ID) (node Node) {
 	if len(*(row[col])) == 1 {
 		node = (*(row[col]))[0]
 	} else if len(*(row[col])) == 2 {
-		if id.BetterChoice((*(row[col]))[0].Id, (*(row[col]))[1].Id) &&
-			!equal_ids(t.local.Id, (*(row[col]))[0].Id) {
+		if id.BetterChoice((*(row[col]))[0].Id, (*(row[col]))[1].Id) {
+			//!equal_ids(t.local.Id, (*(row[col]))[0].Id) { <-- Creo que esta linea era la que nos estaba haciendo el desmadre
 			node = (*(row[col]))[0]
 		} else {
 			node = (*(row[col]))[1]

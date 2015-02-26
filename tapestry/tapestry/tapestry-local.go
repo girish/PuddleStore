@@ -162,8 +162,9 @@ func (local *TapestryNode) Publish(key string) (done chan bool, err error) {
 	done = make(chan bool)
 
 	root, err := local.findRoot(local.node, Hash(key))
-	fmt.Printf("We are publishing from %v, for %v, to: %v\n", local.node.Id, key, root.Id)
+	//fmt.Printf("1)We are publishing from %v, for %v, to: %v\n", local.node.Id, key, root.Id)
 	local.tapestry.register(root, local.node, key)
+	fmt.Printf("2)We are publishing from %v, for %v, to: %v\n", local.node.Id, key, root.Id)
 
 	//Periodically checking
 	go func() {
@@ -173,6 +174,8 @@ func (local *TapestryNode) Publish(key string) (done chan bool, err error) {
 				return
 			case <-time.After(REPUBLISH): // <-- Aqui es REPUBLISH, no cada un segundo, <--ok ahuevo
 				root, _ := local.findRoot(local.node, Hash(key))
+				fmt.Printf("Republish: We are publishing from %v, for %v, to: %v\n", local.node.Id, key, root.Id)
+				//printTable(local.table)
 				local.tapestry.register(root, local.node, key)
 			}
 		}
@@ -283,8 +286,10 @@ func (local *TapestryNode) GetNextHop(id ID) (morehops bool, nexthop Node, err e
 	// TODO: Students should implement this
 
 	// Call routingtable.go method
+
 	nexthop = local.table.GetNextHop(id)
 
+	//fmt.Printf("Our call to nexthop for %v, with %v, going to: %v\n", id, local.node.Id, nexthop.Id)
 	// If all digits match (aka is equal), no more hops are needed.
 	sharedDigits := SharedPrefixLength(local.node.Id, nexthop.Id)
 	// morehops = DIGITS != sharedDigits
@@ -295,10 +300,13 @@ func (local *TapestryNode) GetNextHop(id ID) (morehops bool, nexthop Node, err e
 
 	// If calling nexthop is worse than the current one, it errors out.
 	// TODO: Is this the potential erorr?
-	if id.BetterChoice(local.node.Id, nexthop.Id) {
+	//^^ Quitando una linea en el if cuando son dos en GetNextHop de routingtable.go elimina este pedo
+	/*if id.BetterChoice(local.node.Id, nexthop.Id) {
 		morehops = false
+		fmt.Printf("Next hop is worse, local: %v, next: %v\n", local.node.Id, nexthop.Id)
+		return //<-- This was making it LOOP!
 		//err = errors.New("Next hop was not better than the previous")
-	}
+	}*/
 	morehops = true
 	return
 }
