@@ -5,6 +5,12 @@ import (
 	"testing"
 	"time"
 )
+
+/*This is an extensive test suite that checks the functionality of
+Put, Get, Publish and AddNodeMulticast. Please note that these tests
+require DIGITS to be 4 bytes long as opposed to 40. If you would
+like to test with a DIGITS 40 pleaase remember to change it.*/
+
 /*Helper function to compare a result with an expected string.*/
 func CheckGet(err error, result []byte, expected string, t *testing.T) {
 	if err != nil {
@@ -34,13 +40,13 @@ func FindRootOfHash(nodes []*Tapestry, hash ID) *Tapestry {
 }
 
 /*
-1) This test first adds several nodes, and adds several objects to the nodes.
+PART 1) This test first adds several nodes, and adds several objects to the nodes.
 It then checks for the existance of objects from several nodes.
 
-2)Then it deletes one node and makes sure that the object it had
+PART 2)Then it deletes one node and makes sure that the object it had
 "spoon" is no longer available
 
-3)Then a new node with the "spoon" object joins and makes sure that it is available through another node.
+PART 3)Then a new node with the "spoon" object joins and makes sure that it is available through another node.
 */
 func TestPublishAndRegister(t *testing.T) {
 	if DIGITS != 4 {
@@ -51,7 +57,7 @@ func TestPublishAndRegister(t *testing.T) {
 		t.Errorf("Test will take too long unless TIMEOUT is set to 3 and REPUBLISH is set to 2.")
 		return
 	}
-
+	//PART 1
 	port = 58000
 	id := ID{5, 8, 3, 15}
 	node0 := makeTapestry(id, "", t)
@@ -80,7 +86,7 @@ func TestPublishAndRegister(t *testing.T) {
 	result, err = node0.Get("fork")
 	CheckGet(err, result, "tenedor", t)
 
-	// Root node of Hash(spoon) should no longer have a record
+	// PART 2) Root node of Hash(spoon) should no longer have a record
 	// of this object after node0 leaves after TIMEOUT seconds.
 	root := FindRootOfHash([]*Tapestry{node1, node2, node3}, Hash("chair"))
 	fmt.Printf("The root is: %v and the node0 id is: %v", root, node0.local.node.Id)
@@ -100,7 +106,7 @@ func TestPublishAndRegister(t *testing.T) {
 			}
 		}
 	}
-	//We add a new node that contains spoon and we should find it.
+	//PART 3) We add a new node that contains spoon and we should find it.
 	id = ID{0x5, 2, 0xa, 0xa}
 	node4 := makeTapestry(id, node2.local.node.Address, t)
 	node4.Store("spoon", []byte("cuchara"))
@@ -118,10 +124,10 @@ func TestPublishAndRegister(t *testing.T) {
 }
 
 /*
-This test inserts several nodes and objects and then inserts others to make sure that the root
-changes to the new nodes.
+PART 1) This test inserts several nodes and objects and 
+PART 2) then inserts others to make sure that the root changes to the new nodes.
 
-At the end it also makes sure that there is no replica in the previous node after the timeout.
+PART 3) At the end it also makes sure that there is no replica in the previous node after the timeout.
 */
 func TestChangeRoot(t *testing.T) {
 	if DIGITS != 4 {
@@ -132,7 +138,7 @@ func TestChangeRoot(t *testing.T) {
 		t.Errorf("Test will take too long unless TIMEOUT is set to 3 and REPUBLISH is set to 2.")
 		return
 	}
-	fmt.Println("Hello")
+	//PART 1)
 	port = 58000
 	id := ID{5, 8, 3, 15}
 	node0 := makeTapestry(id, "", t)
@@ -151,24 +157,26 @@ func TestChangeRoot(t *testing.T) {
 	//The root for the node is
 	root, _ := node3.local.findRoot(node3.local.node, Hash("fork"))
 	if !equal_ids(root.Id, node0.local.node.Id) {
-		t.Errorf("The root for the spoon is not node0, its %v\n", root.Id)
+		t.Errorf("The root for the fork is not node0, its %v\n", root.Id)
 	}
-	//Now we insert a new node
+	//PART 2) Now we insert a new node
 	id = ID{0x5, 2, 0xa, 0xa}
 	node4 := makeTapestry(id, node2.local.node.Address, t)
 	node4.Store("napkin", []byte("servilleta"))
+
+	//We wait the timeout
 	time.Sleep(TIMEOUT + 1)
 
-	// //The root for spoon should have changed to node4
+	//The root for fork should have changed to node4
 	fmt.Printf("hash for fork: %v\n", Hash("fork"))
 	fmt.Printf("hash for spoon: %v\n", Hash("spoon"))
 	fmt.Printf("hash for table: %v\n", Hash("table"))
 	fmt.Printf("hash for chair: %v\n", Hash("chair"))
 	root2, _ := node2.local.findRoot(node2.local.node, Hash("fork"))
 	if !equal_ids(root2.Id, node4.local.node.Id) {
-		t.Errorf("The root for the spoon is not node4, its %v\n", root2.Id)
+		t.Errorf("The root for the fork is not node4, its %v\n", root2.Id)
 	}
-	//We now make sure that the replica is no longer in the previous node
+	//PART 3) We now make sure that the replica is no longer in the previous node
 	replica := node0.local.store.Get("fork")
 	if len(replica) != 0 {
 		t.Errorf("This node still has a replica for another node %v", replica)
@@ -181,7 +189,10 @@ func TestChangeRoot(t *testing.T) {
 	node0.Leave()
 }
 
-// Same as previous test, but with no timeout.
+/*
+This test is the same as the previous but it does not have a timeout.
+It tests the transfer of keys during the AddNodeMulticast where keys
+are transfered to new joining node.*/
 func TestTransferKeys(t *testing.T) {
 	if DIGITS != 4 {
 		t.Errorf("Test wont work unless DIGITS is set to 4.")
@@ -191,7 +202,6 @@ func TestTransferKeys(t *testing.T) {
 		t.Errorf("Test will take too long unless TIMEOUT is set to 3 and REPUBLISH is set to 2.")
 		return
 	}
-	fmt.Println("Hello")
 	port = 58000
 	id := ID{5, 8, 3, 15}
 	node0 := makeTapestry(id, "", t)
@@ -210,7 +220,7 @@ func TestTransferKeys(t *testing.T) {
 	//The root for the node is
 	root, _ := node3.local.findRoot(node3.local.node, Hash("fork"))
 	if !equal_ids(root.Id, node0.local.node.Id) {
-		t.Errorf("The root for the spoon is not node0, its %v\n", root.Id)
+		t.Errorf("The root for the fork is not node0, its %v\n", root.Id)
 	}
 	//Now we insert a new node
 	id = ID{0x5, 2, 0xa, 0xa}
@@ -224,7 +234,7 @@ func TestTransferKeys(t *testing.T) {
 	fmt.Printf("hash for chair: %v\n", Hash("chair"))
 	root2, _ := node2.local.findRoot(node2.local.node, Hash("fork"))
 	if !equal_ids(root2.Id, node4.local.node.Id) {
-		t.Errorf("The root for the spoon is not node4, its %v\n", root2.Id)
+		t.Errorf("The root for the fork is not node4, its %v\n", root2.Id)
 	}
 	//We now make sure that the replica is no longer in the previous node
 	replica := node0.local.store.Get("fork")
@@ -238,7 +248,9 @@ func TestTransferKeys(t *testing.T) {
 	node4.Leave()
 	node0.Leave()
 }
-
+/*
+This test inserts several objects and nodes and then accesses all
+the objects from all the nodes.*/
 func TestPutAndGet(t *testing.T) {
 	if DIGITS != 4 {
 		t.Errorf("Test wont work unless DIGITS is set to 4.")

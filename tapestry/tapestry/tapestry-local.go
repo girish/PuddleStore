@@ -245,10 +245,8 @@ func (local *TapestryNode) AddNode(node Node) (neighbourset []Node, err error) {
 */
 func (local *TapestryNode) AddNodeMulticast(newnode Node, level int) (neighbours []Node, err error) {
 	Debug.Printf("Add node multicast %v at level %v\n", newnode, level)
-	fmt.Printf("Add node multicast %v at level %v\n", newnode, level)
 	// TODO: Students should implement this
 	neighbours = local.table.GetLevel(level)
-	fmt.Printf("%v: Neighbours for node %v\n", local.node.Id, neighbours)
 	results := make([]Node, 0)
 	for _, target := range neighbours {
 		result, err := local.tapestry.addNodeMulticast(

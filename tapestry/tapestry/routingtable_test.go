@@ -9,7 +9,7 @@ import (
 /*This test adds 100,000 nodes to the table and removes them, checking
  that all were deleted.*/
 
-func TestSimpleAddAndRemove(t *testing.T) {
+func TestAddAndRemove(t *testing.T) {
 	NUM_NODES := 100000
 	me := Node{RandomID(), ""}
 	table := NewRoutingTable(me)
