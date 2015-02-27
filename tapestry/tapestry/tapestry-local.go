@@ -91,7 +91,6 @@ func (local *TapestryNode) Join(otherNode Node) error {
 		if level > 0 {
 			nextNeighbours := make([]Node, 0)
 			for _, neighbour := range neighbours {
-				fmt.Printf("ENTRE con %v nivel %v\n", local.node.Id, level)
 				result, err := local.tapestry.getBackpointers(neighbour, local.node, level-1)
 
 				if err != nil {
@@ -210,7 +209,6 @@ func (local *TapestryNode) Lookup(key string) (nodes []Node, err error) {
 
 	for i := 0; i < RETRIES; i++ {
 		root, err := local.findRoot(local.node, Hash(key))
-		fmt.Printf("I am %v, looking for %v and the root is %v\n", local.node.Id, key, root.Id)
 		if err != nil {
 			continue
 		}

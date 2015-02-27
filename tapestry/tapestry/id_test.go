@@ -1,13 +1,16 @@
 package tapestry
 
 import (
-	"testing"
+	//"testing"
 )
 /*
 These functions test the utility functions in id.go. Please note that in order to run these 
-tests, DIGITS has to be equal to 40.*/
+tests, DIGITS has to be equal to 40. The tests in tapestry_test might fail and some might not run if DIGITS
+is no equal to 4. If DIGITS = 4 these will not compile. We suggest you comment these out to test the others.
+These are currently commented out so that you can run the ones on tapestry_test*/
 
 // This test makes sure that the prefix length is working
+/*
 func TestSharedPrefixLength(t *testing.T) {
 	a := ID{1,2,3,4,5,6,7,8,9,6,11,12,13,14,15,0,2,5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
 	b := ID{1,2,3,4,5,6,7,8,9,5,11,12,13,14,15,0,2,5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
@@ -29,9 +32,10 @@ func TestSharedPrefixLength(t *testing.T) {
 		t.Errorf("The SharedPrefixLength does not work")
 	}
 
-}
+}*/
 /*
 This function tests several types of ID and makes sure that the output is the expected one.*/
+/*
 func TestBetterChoice(t *testing.T) {
 	a := ID{1,2,3,4,5,6,7,8,9,5,11,12,13,14,15,0,2,5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
 	b := ID{1,2,3,4,5,6,7,8,9,5,11,12,13,14,15,0,2,5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
@@ -76,8 +80,9 @@ func TestBetterChoice(t *testing.T) {
 	if (choice) {//choice should be false at the very beginning, 7 (b)is closer to 1 than 13(a)
 		t.Errorf("The BetterChoice does not work", choice, a, b)
 	}
-}
-
+}*/
+//test for the Closer function.
+/*
 func TestCloser(t *testing.T) {
 	
 	a := ID{1,2,3,4,5,6,7,6,9,5,11,12,1,2,3,0,4,4,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
@@ -140,5 +145,5 @@ func TestCloser(t *testing.T) {
 	if (choice) {//Answer should be b 
 		t.Errorf("The Closer does not work", choice, a, b)
 	}
-}
+}*/
 
