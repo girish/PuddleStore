@@ -74,15 +74,6 @@ func (local *TapestryNode) Join(otherNode Node) error {
 		return fmt.Errorf("Error adding ourselves to root node %v, reason: %v", root, err)
 	}
 
-	fmt.Printf("neighbours %v\n", len(neighbours))
-	// Add the neighbours to our local routing table.
-	//for _, n := range neighbours {
-	//	fmt.Printf("id: %v\n", n.Id)
-	//	local.addRoute(n)
-	//}
-
-	// TODO: Students should implement the backpointer traversal portion of Join
-
 	/*
 		"The nodes returned by AddNodeMulticast() will go into the
 		Joining node's routing table, but all these nodes are of length n
@@ -104,14 +95,14 @@ func (local *TapestryNode) Join(otherNode Node) error {
 				result, err := local.tapestry.getBackpointers(neighbour, local.node, level-1)
 
 				if err != nil {
-					// TODO handle this
+					continue
 				}
 
 				nextNeighbours = append(nextNeighbours, result...)
 
-				if len(result) == 0 {
-					nextNeighbours = append(nextNeighbours, neighbours...)
-				}
+			}
+			if len(nextNeighbours) == 0 {
+				nextNeighbours = append(nextNeighbours, neighbours...)
 			}
 
 			neighbours = nextNeighbours
@@ -122,7 +113,7 @@ func (local *TapestryNode) Join(otherNode Node) error {
 		level--
 	}
 
-	return err // TODO
+	return err
 }
 
 /*
@@ -138,10 +129,22 @@ func (local *TapestryNode) Leave() (err error) {
 	for _, set := range sets {
 		set.mutex.Lock()
 		for node, _ := range set.data {
-			//TODO: Add suitable replacement from our routing table
-			err := local.tapestry.notifyLeave(node, local.node, nil)
+			var row []Node
+			var err error
+
+			sharedDigits := SharedPrefixLength(local.node.Id, node.Id)
+			if sharedDigits < DIGITS-1 {
+				row = local.table.GetLevel(sharedDigits + 1)
+			}
+			if len(row) != 0 {
+				err = local.tapestry.notifyLeave(node, local.node, &row[0])
+			} else {
+				err = local.tapestry.notifyLeave(node, local.node, nil)
+			}
+
+			// Could not notify
 			if err != nil {
-				//TODO
+				continue
 			}
 		}
 		set.mutex.Unlock()
@@ -162,9 +165,15 @@ func (local *TapestryNode) Publish(key string) (done chan bool, err error) {
 	done = make(chan bool)
 
 	root, err := local.findRoot(local.node, Hash(key))
-	//fmt.Printf("1)We are publishing from %v, for %v, to: %v\n", local.node.Id, key, root.Id)
-	local.tapestry.register(root, local.node, key)
-	fmt.Printf("2)We are publishing from %v, for %v, to: %v\n", local.node.Id, key, root.Id)
+
+	// If is not root
+	for i := 0; i < RETRIES; i++ {
+		isRoot, err := local.tapestry.register(root, local.node, key)
+
+		if isRoot && err == nil {
+			break
+		}
+	}
 
 	//Periodically checking
 	go func() {
@@ -174,14 +183,19 @@ func (local *TapestryNode) Publish(key string) (done chan bool, err error) {
 				return
 			case <-time.After(REPUBLISH): // <-- Aqui es REPUBLISH, no cada un segundo, <--ok ahuevo
 				root, _ := local.findRoot(local.node, Hash(key))
-				fmt.Printf("Republish: We are publishing from %v, for %v, to: %v\n", local.node.Id, key, root.Id)
-				//printTable(local.table)
 				local.tapestry.register(root, local.node, key)
+				for i := 0; i < RETRIES; i++ {
+					isRoot, err := local.tapestry.register(root, local.node, key)
+
+					if isRoot && err == nil {
+						break
+					}
+				}
 			}
 		}
 	}()
 
-	return done, err //TODO: ?
+	return done, err
 }
 
 /*
@@ -241,15 +255,21 @@ func (local *TapestryNode) AddNodeMulticast(newnode Node, level int) (neighbours
 	for _, target := range neighbours {
 		result, err := local.tapestry.addNodeMulticast(
 			target, newnode, level+1)
-		results = append(results, result...)
 
+		// bad node, continue
 		if err != nil {
-			// TODO
+			continue
 		}
+
+		results = append(results, result...)
 	}
-	err = local.tapestry.transfer(newnode, local.node, nil)
+
+	transferReg := local.store.GetTransferRegistrations(local.node, newnode)
+	err = local.tapestry.transfer(newnode, local.node, transferReg)
+
+	// Could not add stuff to new node. We need to reregister what we removed.
 	if err != nil {
-		// TODO
+		local.store.RegisterAll(transferReg, TIMEOUT)
 	}
 
 	neighbours = append(neighbours, local.node)
@@ -272,7 +292,7 @@ func (local *TapestryNode) NotifyLeave(from Node, replacement *Node) (err error)
 	local.RemoveBackpointer(from)
 
 	if replacement != nil {
-		local.addRoute(*replacement)
+		err = local.addRoute(*replacement)
 	}
 	return
 }
@@ -283,30 +303,17 @@ func (local *TapestryNode) NotifyLeave(from Node, replacement *Node) (err error)
    *    Returns the best candidate from our routing table for routing to the provided ID
 */
 func (local *TapestryNode) GetNextHop(id ID) (morehops bool, nexthop Node, err error) {
-	// TODO: Students should implement this
 
 	// Call routingtable.go method
-
 	nexthop = local.table.GetNextHop(id)
 
-	//fmt.Printf("Our call to nexthop for %v, with %v, going to: %v\n", id, local.node.Id, nexthop.Id)
 	// If all digits match (aka is equal), no more hops are needed.
 	sharedDigits := SharedPrefixLength(local.node.Id, nexthop.Id)
-	// morehops = DIGITS != sharedDigits
 	if DIGITS == sharedDigits {
 		morehops = false
 		return
 	}
 
-	// If calling nexthop is worse than the current one, it errors out.
-	// TODO: Is this the potential erorr?
-	//^^ Quitando una linea en el if cuando son dos en GetNextHop de routingtable.go elimina este pedo
-	/*if id.BetterChoice(local.node.Id, nexthop.Id) {
-		morehops = false
-		fmt.Printf("Next hop is worse, local: %v, next: %v\n", local.node.Id, nexthop.Id)
-		return //<-- This was making it LOOP!
-		//err = errors.New("Next hop was not better than the previous")
-	}*/
 	morehops = true
 	return
 }
@@ -378,7 +385,6 @@ func (local *TapestryNode) RemoveBadNodes(badnodes []Node) (err error) {
    *    Kick off a timer to remove the node if it's not advertised again after a set amount of time
 */
 func (local *TapestryNode) Register(key string, replica Node) (isRoot bool, err error) {
-	// TODO: Students should implement this
 	root, _ := local.findRoot(local.node, Hash(key))
 	if !equal_ids(root.Id, local.node.Id) {
 		isRoot = false
@@ -398,7 +404,6 @@ func (local *TapestryNode) Register(key string, replica Node) (isRoot bool, err 
    *    Return all nodes that are registered in the local object store for this key
 */
 func (local *TapestryNode) Fetch(key string) (isRoot bool, replicas []Node, err error) {
-	// TODO: Students should implement this
 	root, _ := local.findRoot(local.node, Hash(key))
 	if !equal_ids(root.Id, local.node.Id) {
 		isRoot = false
@@ -417,10 +422,8 @@ func (local *TapestryNode) Fetch(key string) (isRoot bool, replicas []Node, err 
    *    If appropriate, add the from node to our local routing table
 */
 func (local *TapestryNode) Transfer(from Node, replicamap map[string][]Node) error {
-	// TODO: Students should implement this
 	local.store.RegisterAll(replicamap, TIMEOUT)
 
-	// TODO: when is it appropiate to add to local table?
 	err := local.addRoute(from)
 	return err
 }
@@ -434,17 +437,15 @@ func (local *TapestryNode) Transfer(from Node, replicamap map[string][]Node) err
 */
 
 func (local *TapestryNode) addRoute(node Node) (err error) {
-	// TODO: Students should implement this
 	added, prev := local.table.Add(node)
 
+	// In any case, error was loss of communication with node.
 	if added {
-		local.tapestry.addBackpointer(node, local.node)
-		// TODO notify
+		err = local.tapestry.addBackpointer(node, local.node)
 	}
 
 	if prev != nil {
-		local.tapestry.removeBackpointer(node, local.node)
-		// TODO notify old node
+		err = local.tapestry.removeBackpointer(node, local.node)
 	}
 
 	return
@@ -459,20 +460,29 @@ func (local *TapestryNode) addRoute(node Node) (err error) {
 */
 func (local *TapestryNode) findRoot(start Node, id ID) (Node, error) {
 	Debug.Printf("Routing to %v\n", id)
-	// TODO: Students should implement this
 
 	// I hate Go's scoping </3
 	next := start
-	var current Node
+	var current, prev Node
+	var badNodes []Node
 	var err error
 	var hasNext bool
 
 	for { // No do whiles in Go </3
+		prev = current
 		current = next
 		hasNext, next, err = local.tapestry.getNextHop(current, id)
 
 		if err != nil {
-			// TODO: Notify who and what? If I got a node back then whats the problem?
+			badNodes = append(badNodes, current)
+			current = prev
+		}
+
+		err = local.tapestry.removeBadNodes(current, badNodes)
+
+		// Current node does not exist anymore. Cannot recover.
+		if err != nil {
+			return current, err
 		}
 
 		if !hasNext {

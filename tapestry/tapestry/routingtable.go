@@ -44,6 +44,17 @@ func NewRoutingTable(me Node) *RoutingTable {
 	return t
 }
 
+func GetFurthest(id ID, nodes []Node) int {
+
+	furthest := 0
+	for i := 1; i < SLOTSIZE; i++ {
+		if id.Closer(nodes[furthest].Id, nodes[i].Id) {
+			furthest = i
+		}
+	}
+	return furthest
+}
+
 /*
 	Adds the given node to the routing table
 
@@ -54,11 +65,6 @@ func NewRoutingTable(me Node) *RoutingTable {
 func (t *RoutingTable) Add(node Node) (added bool, previous *Node) {
 
 	t.mutex.Lock()
-
-	// TODO: Students should implement this
-	//if len(t.rows[i][node.Id[i]]) > 3 {
-	//	previous = t.rows
-	//}
 
 	// Find table slot.
 	level := SharedPrefixLength(node.Id, t.local.Id)
@@ -86,9 +92,10 @@ func (t *RoutingTable) Add(node Node) (added bool, previous *Node) {
 	for i := 0; i <= level; i++ {
 		slot = t.rows[i][node.Id[i]]
 		*slot = append(*slot, node)
-		if len(*slot) > 3 {
-			previous = &(*slot)[2]
-			*slot = (*slot)[:2]
+		if len(*slot) > SLOTSIZE {
+			furthest := GetFurthest(t.local.Id, *slot)
+			previous = &(*slot)[furthest]
+			*slot = append((*slot)[:furthest], (*slot)[furthest+1:]...)
 		}
 	}
 
@@ -108,12 +115,10 @@ func (t *RoutingTable) Remove(node Node) (wasRemoved bool) {
 
 	t.mutex.Lock()
 
-	// TODO: Students should implement this
-
 	// Get the table slot
 	level := SharedPrefixLength(node.Id, t.local.Id)
 	if level == DIGITS {
-		// TODO check if you should ever delete youself like this
+		// You should never delete youself on your own routing table.
 		wasRemoved = false
 		t.mutex.Unlock()
 		return
@@ -124,15 +129,11 @@ func (t *RoutingTable) Remove(node Node) (wasRemoved bool) {
 	for j := 0; j <= level; j++ {
 		slot := t.rows[j][node.Id[j]]
 
-		//slot := t.rows[i][node.Id[i]]
-
 		// Find and remove node
 		for i := 0; i < len(*slot); i++ {
 			if SharedPrefixLength((*slot)[i].Id, node.Id) == DIGITS {
 				*slot = append((*slot)[:i], (*slot)[i+1:]...) // This is remove in Go
 				wasRemoved = true
-				// t.mutex.Unlock()
-				// return
 			}
 		}
 	}
@@ -188,7 +189,6 @@ func (t *RoutingTable) GetNextHop(id ID) (node Node) {
 		node = (*(row[col]))[0]
 	} else if len(*(row[col])) == 2 {
 		if id.BetterChoice((*(row[col]))[0].Id, (*(row[col]))[1].Id) {
-			//!equal_ids(t.local.Id, (*(row[col]))[0].Id) { <-- Creo que esta linea era la que nos estaba haciendo el desmadre
 			node = (*(row[col]))[0]
 		} else {
 			node = (*(row[col]))[1]
@@ -196,17 +196,14 @@ func (t *RoutingTable) GetNextHop(id ID) (node Node) {
 	} else { // Consider optimization if its too slow
 		if id.BetterChoice((*(row[col]))[0].Id, (*(row[col]))[1].Id) &&
 			id.BetterChoice((*(row[col]))[0].Id, (*(row[col]))[2].Id) {
-			// !equal_ids(t.local.Id, (*(row[col]))[0].Id) {
 			fmt.Printf("1\n")
 			node = (*(row[col]))[0]
 		} else if id.BetterChoice((*(row[col]))[1].Id, (*(row[col]))[0].Id) &&
 			id.BetterChoice((*(row[col]))[1].Id, (*(row[col]))[2].Id) {
-			// !equal_ids(t.local.Id, (*(row[col]))[1].Id) {
 			fmt.Printf("2\n")
 			node = (*(row[col]))[1]
 		} else if id.BetterChoice((*(row[col]))[2].Id, (*(row[col]))[0].Id) &&
 			id.BetterChoice((*(row[col]))[2].Id, (*(row[col]))[1].Id) {
-			// !equal_ids(t.local.Id, (*(row[col]))[2].Id) {
 			fmt.Printf("3, comparing id: %v with %v & %v and %v & %v\n", id, (*(row[col]))[2].Id, (*(row[col]))[0].Id, (*(row[col]))[2].Id, (*(row[col]))[1].Id)
 			node = (*(row[col]))[2]
 			fmt.Printf("Returning %v\n", node.Id)
