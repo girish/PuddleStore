@@ -77,7 +77,6 @@ func SharedPrefixLength(a ID, b ID) (i int) {
 */
 func (id ID) BetterChoice(first ID, second ID) bool {
 	// TODO: Students should implement this
-	//fmt.Printf("id:%v,first: %v,second: %v\n", id, first, second)
 	fPrefix := SharedPrefixLength(first, id)
 	sPrefix := SharedPrefixLength(second, id)
 	if fPrefix != sPrefix || (sPrefix == DIGITS && fPrefix == DIGITS) {
@@ -107,7 +106,7 @@ func (id ID) BetterChoice(first ID, second ID) bool {
 			target = target % BASE
 		}
 
-		//fmt.Printf("The target is %v, then fDistance: %v and sDistance: %v\n", target, fDistance, sDistance)
+		
 		if fDistance == sDistance {
 			if index == DIGITS-1 {
 				return false
@@ -151,16 +150,11 @@ func (id ID) Closer(first ID, second ID) bool {
 	difF.Abs(difF)
 	difS.Abs(difS)
 
-	fmt.Println(first, second, id)
-	fmt.Println(firstNum, secondNum, idNum)
+	
 
 	if difF.Cmp(difS) == -1 {
-		fmt.Println("-->", first, difF, firstNum)
-		fmt.Println(second, difS, secondNum)
 		return true
 	} else {
-		fmt.Println(first, difS, secondNum)
-		fmt.Println("-->", second, difS, secondNum)
 		return false
 	}
 	/*

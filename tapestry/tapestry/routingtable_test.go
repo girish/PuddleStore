@@ -18,7 +18,6 @@ func TestSimpleAddAndRemove(t *testing.T) {
 		nodes[i] = Node{RandomID(), ""}
 		table.Add(nodes[i])
 	}
-	printTable(table)
 	for i := 0; i < NUM_NODES; i++ {
 		table.Remove(nodes[i])
 	}

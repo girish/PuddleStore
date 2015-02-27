@@ -31,7 +31,6 @@ func SetDebug(enabled bool) {
 // Prints a routing table
 func (tapestry *Tapestry) PrintRoutingTable() {
 	table := tapestry.local.table
-	fmt.Printf("RoutingTable for node %v\n", table.local)
 	id := table.local.Id.String()
 	for i, row := range table.rows {
 		for j, slot := range row {

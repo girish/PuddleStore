@@ -1,11 +1,13 @@
 package tapestry
 
 import (
-	//"testing"
+	"testing"
 )
-
-// Tests to make sure that prefix length is working
 /*
+These functions test the utility functions in id.go. Please note that in order to run these 
+tests, DIGITS has to be equal to 40.*/
+
+// This test makes sure that the prefix length is working
 func TestSharedPrefixLength(t *testing.T) {
 	a := ID{1,2,3,4,5,6,7,8,9,6,11,12,13,14,15,0,2,5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
 	b := ID{1,2,3,4,5,6,7,8,9,5,11,12,13,14,15,0,2,5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
@@ -28,7 +30,8 @@ func TestSharedPrefixLength(t *testing.T) {
 	}
 
 }
-
+/*
+This function tests several types of ID and makes sure that the output is the expected one.*/
 func TestBetterChoice(t *testing.T) {
 	a := ID{1,2,3,4,5,6,7,8,9,5,11,12,13,14,15,0,2,5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
 	b := ID{1,2,3,4,5,6,7,8,9,5,11,12,13,14,15,0,2,5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
@@ -46,31 +49,31 @@ func TestBetterChoice(t *testing.T) {
 	}
 	a = ID{1,2,3,4,5,6,7,6,9,5,11,12,13,14,15,0,2,5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
 	b = ID{1,2,3,4,5,6,7,7,9,5,11,12,13,14,15,0,2,5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
-	id = ID{1,2,3,4,5,6,7,8,9,5,11,12,13,14,15,0,2,5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
+	id =ID{1,2,3,4,5,6,7,8,9,5,11,12,13,14,15,0,2,5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
 	choice = id.BetterChoice(a, b)
-	if (choice) {//choice should be false (b is better) because it is the closes when incrementing by 1
+	if (!choice) {//choice should be true becuase we get to 6 from 8 faster than to 7
 		t.Errorf("The BetterChoice does not work", choice, a, b)
 	}
 
 	a = ID{1,2,3,4,5,6,7,8,9,5,11,12,13,14,15,0,2,5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
 	b = ID{1,2,3,4,5,6,7,7,9,5,11,12,13,14,15,0,2,5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
-	id = ID{1,2,3,4,5,6,7,6,9,5,11,12,13,14,15,0,2,5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
+	id =ID{1,2,3,4,5,6,7,6,9,5,11,12,13,14,15,0,2,5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
 	choice = id.BetterChoice(a, b)
-	if (!choice) {//choice should be true because it is the closes when incrementing by 1 % base
+	if (choice) {//choice should be false because it is closer to get to b (7) than 8
 		t.Errorf("The BetterChoice does not work", choice, a, b)
 	}
 	a = ID{1,2,3,4,5,6,7,6,9,5,11,12,1,2,3,0,4,    4,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
 	b = ID{1,2,3,4,5,6,7,6,9,5,11,12,1,2,3,0,4,    5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
 	id = ID{1,2,3,4,5,6,7,6,9,5,10,12,13,13,15,0,2,2,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
 	choice = id.BetterChoice(a, b)
-	if (choice) {//choice should be false by a combination of increments of % 1
+	if (!choice) {//choice should be true because it is faster to get to a (4) from 2 than to b(5)
 		t.Errorf("The BetterChoice does not work", choice, a, b)
 	}
 	a = ID{13,2,3,4,5,6,7,6,9,5,11,12,1,2,3,0,4,4,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
 	b = ID{7,2,3,4,5,6,7,6,9,5,11,12,1,2,3,0,4,5,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
 	id = ID{1,2,3,4,5,6,7,6,9,5,10,12,13,13,15,0,2,2,3,0,2,12,15,13,15,13,2,5,10,11,13,2,8,9,12,13,0,9,8,5}
 	choice = id.BetterChoice(a, b)
-	if (!choice) {//choice should be true for the beginning entry
+	if (choice) {//choice should be false at the very beginning, 7 (b)is closer to 1 than 13(a)
 		t.Errorf("The BetterChoice does not work", choice, a, b)
 	}
 }
@@ -138,5 +141,4 @@ func TestCloser(t *testing.T) {
 		t.Errorf("The Closer does not work", choice, a, b)
 	}
 }
-*/
 
