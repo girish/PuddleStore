@@ -24,7 +24,6 @@ func DefaultConfig() *Config {
 }
 
 func CheckConfig(config *Config) error {
-	//TODO: add checks for config values
 	if config.ElectionTimeout < config.HeartbeatFrequency {
 		return fmt.Errorf("The election timeout (%v) is less than the heartbeat frequency (%v)", config.ElectionTimeout, config.HeartbeatFrequency)
 	}

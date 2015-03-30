@@ -79,10 +79,10 @@ type RequestVoteRequest struct {
 	/* The cadidate Id currently requesting a node to vote for it. */
 	CandidateId NodeAddr
 
-	/* The index of the candidate’s last log entry */
+	/* The index of the candidate's last log entry */
 	LastLogIndex uint64
 
-	/* The term of the candidate’s last log entry */
+	/* The term of the candidate's last log entry */
 	LastLogTerm uint64
 }
 
@@ -111,7 +111,7 @@ func (r *RaftNode) RequestVoteRPC(remoteNode *NodeAddr, request RequestVoteReque
 /* also used as a heartbeat between leaders and followers.             */
 /*                                                                     */
 type AppendEntriesRequest struct {
-	/* The leader’s term */
+	/* The leader's term */
 	Term uint64
 
 	/* The ID of the leader, so that followers can redirect clients */
