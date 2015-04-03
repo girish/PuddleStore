@@ -40,6 +40,11 @@ type LogEntry struct {
 	/* Data associated with this log entry in the   */
 	/* user's finite-state-machine.                 */
 	Data []byte
+
+	/* After processing this log entry, what ID to  */
+	/* use when caching the response. Use an empty  */
+	/* string to not cache at all                   */
+	CacheId string
 }
 
 type FileData struct {
@@ -242,10 +247,9 @@ func (r *RaftNode) CheckRequestCache(clientReq ClientRequest) (*ClientReply, boo
 	}
 }
 
-func (r *RaftNode) AddRequest(req ClientRequest, reply ClientReply) error {
+func (r *RaftNode) AddRequest(uniqueId string, reply ClientReply) error {
 	r.ssMutex.Lock()
 	defer r.ssMutex.Unlock()
-	uniqueId := fmt.Sprintf("%v-%v", req.ClientId, req.SequenceNum)
 	_, ok := r.stableState.ClientRequestSequences[uniqueId]
 	if ok {
 		return errors.New("Request with the same clientId and seqNum already exists!")

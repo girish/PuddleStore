@@ -43,7 +43,7 @@ func (server *RaftRPCServer) StartNodeImpl(req *StartNodeRequest, reply *StartNo
 }
 
 func (server *RaftRPCServer) RequestVoteImpl(req *RequestVoteRequest, reply *RequestVoteReply) error {
-	if server.node.Testing.IsDenied(req.FromNode, *server.node.GetLocalAddr()) {
+	if server.node.Testing.IsDenied(req.CandidateId, *server.node.GetLocalAddr()) {
 		return ErrorTestingPolicyDenied
 	}
 	rvreply, err := server.node.RequestVote(req)

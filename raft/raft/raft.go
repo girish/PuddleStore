@@ -174,15 +174,15 @@ func (r *RaftNode) startNodes() {
 }
 
 func CreateLocalCluster(config *Config) ([]*RaftNode, error) {
-	nodes := make([]*RaftNode, config.ClusterSize)
-
 	if config == nil {
 		config = DefaultConfig()
 	}
 	err := CheckConfig(config)
 	if err != nil {
-		return nodes, err
+		return nil, err
 	}
+
+	nodes := make([]*RaftNode, config.ClusterSize)
 
 	nodes[0], err = CreateNode(0, nil, config)
 	for i := 1; i < config.ClusterSize; i++ {
@@ -196,15 +196,15 @@ func CreateLocalCluster(config *Config) ([]*RaftNode, error) {
 }
 
 func CreateDefinedLocalCluster(config *Config, ports []int) ([]*RaftNode, error) {
-	nodes := make([]*RaftNode, config.ClusterSize)
-
 	if config == nil {
 		config = DefaultConfig()
 	}
 	err := CheckConfig(config)
 	if err != nil {
-		return nodes, err
+		return nil, err
 	}
+
+	nodes := make([]*RaftNode, config.ClusterSize)
 
 	nodes[0], err = CreateNode(ports[0], nil, config)
 	if err != nil {

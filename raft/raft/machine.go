@@ -37,11 +37,14 @@ func (r *RaftNode) processLog(entry LogEntry) ClientReply {
 		LeaderHint: *r.GetLocalAddr(),
 	}
 
+	if entry.CacheId != "" {
+		r.AddRequest(entry.CacheId, reply)
+	}
+
 	r.requestMutex.Lock()
 	msg, exists := r.requestMap[entry.Index]
 	if exists {
 		msg.reply <- reply
-		r.AddRequest(*msg.request, reply)
 		delete(r.requestMap, entry.Index)
 	}
 	r.requestMutex.Unlock()

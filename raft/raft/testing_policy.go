@@ -20,11 +20,7 @@ func NewTesting() *TestingPolicy {
 var ErrorTestingPolicyDenied = errors.New("the testing policy has forbid this communication")
 
 func getCommId(a, b NodeAddr) string {
-	if a.Id < b.Id {
-		return fmt.Sprintf("%v_%v", a.Id, b.Id)
-	} else {
-		return fmt.Sprintf("%v_%v", b.Id, a.Id)
-	}
+	return fmt.Sprintf("%v_%v", a.Id, b.Id)
 }
 
 /*                                                                     */

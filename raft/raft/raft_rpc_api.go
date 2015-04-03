@@ -70,9 +70,6 @@ func StartNodeRPC(remoteNode NodeAddr, otherNodes []NodeAddr) error {
 /* Raft RequestVote RPC, invoked by candidates to gather votes         */
 /*                                                                     */
 type RequestVoteRequest struct {
-	/* The source node of the RPC */
-	FromNode NodeAddr
-
 	/* The candidate's current term Id */
 	Term uint64
 
@@ -127,7 +124,7 @@ type AppendEntriesRequest struct {
 	/* heartbeat; may send more than one for efficiency)      */
 	Entries []LogEntry
 
-	/* The leader’s commitIndex */
+	/* The leader's commitIndex */
 	LeaderCommit uint64
 }
 
