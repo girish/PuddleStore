@@ -246,6 +246,7 @@ func (r *RaftNode) Exit() {
 }
 
 func (r *RaftNode) GracefulExit() {
+	r.Testing.PauseWorld(true)
 	Out.Printf("Gracefully shutting down node!")
 	r.gracefulExit <- true
 }
