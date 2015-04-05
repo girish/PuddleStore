@@ -114,7 +114,10 @@ func AppendLogEntry(fileData *FileData, entry *LogEntry) error {
 }
 
 func TruncateLog(raftLogFd *FileData, index uint64) error {
-	newFileSize := raftLogFd.idxMap[index]
+	newFileSize, exist := raftLogFd.idxMap[index]
+	if !exist {
+		return fmt.Errorf("Truncation failed, log index %v doesn't exist\n", index)
+	}
 	err := raftLogFd.fd.Truncate(newFileSize)
 	if err != nil {
 		return err
