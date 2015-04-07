@@ -131,6 +131,8 @@ func TruncateLog(raftLogFd *FileData, index uint64) error {
 	for i := index; i < uint64(len(raftLogFd.idxMap)); i++ {
 		delete(raftLogFd.idxMap, i)
 	}
+
+	raftLogFd.size = newFileSize
 	return nil
 }
 
