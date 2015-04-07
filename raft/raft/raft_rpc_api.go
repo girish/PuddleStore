@@ -248,6 +248,7 @@ func makeRemoteCall(remoteNode *NodeAddr, method string, req interface{}, rsp in
 	uniqueMethodName := fmt.Sprintf("%v.%v", remoteNodeAddrStr, method)
 	err = client.Call(uniqueMethodName, req, rsp)
 	if err != nil {
+		client.Close()
 		delete(connMap, remoteNodeAddrStr)
 		return err
 	}
