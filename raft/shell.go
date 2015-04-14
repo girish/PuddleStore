@@ -45,9 +45,7 @@ LOOP:
 			continue
 		}
 		// Trim trailing newline
-		input = string([]byte(input)[:len(input)-1])
-		// Trim leading and trailing whitespace
-		input = strings.Trim(input, " \t")
+		input = strings.TrimSpace(input)
 		if input == "" {
 			continue
 		}
