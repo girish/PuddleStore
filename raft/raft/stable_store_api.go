@@ -278,6 +278,10 @@ func (r *RaftNode) getLastLogIndex() uint64 {
 	return uint64(len(r.logCache) - 1)
 }
 
+func (r *RaftNode) getLastLogTerm() uint64 {
+	return r.getLogEntry(r.getLastLogIndex()).TermId
+}
+
 func (r *RaftNode) appendLogEntry(entry LogEntry) error {
 	// write entry to disk
 	err := AppendLogEntry(&r.raftLogFd, &entry)
