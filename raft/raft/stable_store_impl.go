@@ -118,19 +118,20 @@ func TruncateLog(raftLogFd *FileData, index uint64) error {
 	if !exist {
 		return fmt.Errorf("Truncation failed, log index %v doesn't exist\n", index)
 	}
-	err := raftLogFd.fd.Truncate(newFileSize)
-	if err != nil {
-		return err
-	}
 
-	err = raftLogFd.fd.Sync()
+	// Windows does not allow truncation of open file, must close first
+	raftLogFd.fd.Close()
+	err := os.Truncate(raftLogFd.filename, newFileSize)
 	if err != nil {
 		return err
 	}
+	fd, err := os.OpenFile(raftLogFd.filename, os.O_APPEND|os.O_WRONLY, 0600)
+	raftLogFd.fd = fd
 
 	for i := index; i < uint64(len(raftLogFd.idxMap)); i++ {
 		delete(raftLogFd.idxMap, i)
 	}
+	raftLogFd.size = newFileSize
 	return nil
 }
 
@@ -210,17 +211,16 @@ func WriteStableState(fileData *FileData, ss NodeStableState) error {
 		return fmt.Errorf("Backup failed: %v", err)
 	}
 
-	// truncate live stable state
-	err = fileData.fd.Truncate(0)
-	if err != nil {
+	// Windows does not allow truncation of open file, must close first
+	fileData.fd.Close()
 
+	// truncate live stable state
+	err = os.Truncate(fileData.filename, 0)
+	if err != nil {
 		return fmt.Errorf("Truncation failed: %v", err)
 	}
-
-	err = fileData.fd.Sync()
-	if err != nil {
-		return fmt.Errorf("Sync #1 failed: %v", err)
-	}
+	fd, err := os.OpenFile(fileData.filename, os.O_APPEND|os.O_WRONLY, 0600)
+	fileData.fd = fd
 
 	// write out stable state to live version
 	bytes, err := getStableStateBytes(ss)
