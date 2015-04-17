@@ -80,9 +80,9 @@ func (r *RaftNode) doFollower() state {
 						r.commitIndex = uint64(math.Min(float64(req.LeaderCommit), float64(r.getLastLogIndex())))
 					}
 
-					for r.lastApplied <= r.commitIndex {
-						r.processLog(*r.getLogEntry(r.lastApplied))
+					for r.lastApplied < r.commitIndex {
 						r.lastApplied++
+						r.processLog(*r.getLogEntry(r.lastApplied))
 					}
 
 					rep <- AppendEntriesReply{currTerm, true}
@@ -239,6 +239,7 @@ func (r *RaftNode) doLeader() state {
 
 			entries := make([]LogEntry, 1)
 			entries[0] = LogEntry{r.getLastLogIndex() + 1, r.GetCurrentTerm(), CLIENT_REGISTRATION, make([]byte, 0), ""}
+			//we add it to the log
 			r.appendLogEntry(entries[0])
 
 			fallback, maj := r.sendAppendEntries(entries)
@@ -249,12 +250,15 @@ func (r *RaftNode) doLeader() state {
 				} else {
 					rep <- RegisterClientReply{REQ_FAILED, 0, *r.LeaderAddr}
 				}
+				//not sure we need to do this
 				r.sendRequestFail()
 				return r.doFollower
 			}
 
 			if !maj {
 				rep <- RegisterClientReply{REQ_FAILED, 0, *r.LeaderAddr}
+				//Truncate log, didnt happen
+				r.truncateLog(r.getLastLogIndex())
 			} else {
 				//r.processLog(entries[0])
 				//r.commitIndex++
@@ -265,11 +269,30 @@ func (r *RaftNode) doLeader() state {
 		case clientReq := <-r.clientRequest:
 			req := clientReq.request
 			rep := clientReq.reply
-
+			//TODO: Should we first check that it's registered?
 			entries := make([]LogEntry, 1)
-			entries[0] = LogEntry{r.getLastLogIndex() + 1, r.GetCurrentTerm(), NOOP, make([]byte, 0), ""}
+			//Fill in the LogEntry based on the request data
+			entries[0] = LogEntry{r.getLastLogIndex() + 1, r.GetCurrentTerm(), req.Command, req.Data, strconv.Itoa(req.SequenceNum)}
 			r.appendLogEntry(entries[0])
 
+			//we now send it to everyone
+			fallback, maj := r.sendAppendEntries(entries)
+
+			if fallback {
+				//Ahora no estoy tan seguro de hacer esto
+				r.sendRequestFail()
+				return r.doFollower
+			}
+
+			if !maj {
+				rep <- ClientReply{REQ_FAILED, 0, *r.LeaderAddr}
+				//Truncate log, didn't happen
+				r.truncateLog(r.getLastLogIndex())
+			} else {
+				//Nos esperamos a que el heartbeat haga commit.
+				//We now cache the response in the response map to reply to it later
+				r.requestMap[r.SequenceNum] = clientReq
+			}
 			// electionTimeout = makeElectionTimeout()
 		}
 	}
@@ -295,11 +318,13 @@ func (r *RaftNode) sendNoop() bool {
 		panic("Leader got in but had to fall back. Por que?")
 	}
 
-	if maj {
-		r.processLog(entries[0])
-		r.commitIndex++
-	}
-	r.sendAppendEntries(make([]LogEntry, 0))
+	//No processLog until we increase the commit index. Which happens in
+	//heartbeat.
+	// if maj {
+	// 	r.processLog(entries[0])
+	// 	r.commitIndex++
+	// }
+	// r.sendAppendEntries(make([]LogEntry, 0))
 
 	return true
 }
@@ -370,16 +395,7 @@ func (r *RaftNode) requestVotes(electionResults chan bool) {
 	}()
 }
 
-/**
- * This function is used by the leader to send out heartbeats to each of
- * the other nodes. It returns true if the leader should fall back to the
- * follower state. (This happens if we discover that we are in an old term.)
- *
- * If another node isn't up-to-date, then the leader should attempt to
- * update them, and, if an index has made it to a quorum of nodes, commit
- * up to that index. Once committed to that index, the replicated state
- * machine should be given the new log entries via processLog.
- */
+
 /*func (r *RaftNode) sendHeartBeats() (fallBack, sentToMajority bool) {
 	// TODO: Students should implement this method
 
@@ -453,7 +469,16 @@ func (r *RaftNode) sendEmptyHeartBeats() {
 				r.commitIndex})
 	}
 }
-
+/**
+ * This function is used by the leader to send out heartbeats to each of
+ * the other nodes. It returns true if the leader should fall back to the
+ * follower state. (This happens if we discover that we are in an old term.)
+ *
+ * If another node isn't up-to-date, then the leader should attempt to
+ * update them, and, if an index has made it to a quorum of nodes, commit
+ * up to that index. Once committed to that index, the replicated state
+ * machine should be given the new log entries via processLog.
+ */
 func (r *RaftNode) sendHeartBeats() (fallBack, sentToMajority bool) {
 
 	nodes := r.GetOtherNodes()
@@ -464,6 +489,8 @@ func (r *RaftNode) sendHeartBeats() (fallBack, sentToMajority bool) {
 			continue
 		}
 		prevLogIndex := r.nextIndex[n.Id] - 1
+		//TODO: Que pasa si el next index esta mas arriba que el log del leader?
+		// Esta madre va a tronar.
 		prevLogTerm := r.getLogEntry(prevLogIndex).TermId
 		reply, _ := r.AppendEntriesRPC(&n,
 			AppendEntriesRequest{r.GetCurrentTerm(), *r.GetLocalAddr(),
@@ -481,8 +508,8 @@ func (r *RaftNode) sendHeartBeats() (fallBack, sentToMajority bool) {
 		if reply.Success {
 			succ_nodes++
 			nextIndex := r.nextIndex[n.Id]
+			//Aqui segun you se vuelven iguales porque ya apendearon
 			r.matchIndex[n.Id] = r.nextIndex[n.Id] - 1
-
 			if (nextIndex - 1) != r.getLastLogIndex() {
 				// TODO
 				entries := r.getLogEntries(nextIndex, r.getLastLogIndex())
@@ -536,13 +563,20 @@ func (r *RaftNode) sendAppendEntries(entries []LogEntry) (fallBack, sentToMajori
 		if n.Id == r.Id {
 			continue
 		}
+		//we have the - 1 because we just added it (before this call) to our own log
+		prevLogIndex := r.getLastLogIndex() - 1
+		prevLogTerm := r.getLogTerm(prevLogIndex)
 		reply, _ := r.AppendEntriesRPC(&n,
 			AppendEntriesRequest{r.GetCurrentTerm(), *r.GetLocalAddr(),
-				r.getLastLogIndex(), r.getLastLogTerm(), entries,
+				prevLogIndex, prevLogTerm, entries,
 				r.commitIndex})
 
 		if reply != nil {
 			succ_nodes++
+			//We increase the next index for this node
+			//It's lastLogIndex + 1 porque en lastLogIndex es donde lo
+			//acaba de agregar.
+			r.nextIndex[n.Id] = r.getLastLogIndex() + 1
 		} else {
 			continue
 		}

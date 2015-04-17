@@ -47,7 +47,7 @@ type RaftNode struct {
 	commitIndex uint64
 	lastApplied uint64
 	leaderMutex sync.Mutex
-	nextIndex   map[string]uint64
+	nextIndex   map[string]uint64 //we update it only when we actually append and sentToMaj = true (sned noop, client req and reg)
 	matchIndex  map[string]uint64
 
 	/* Channels to send/recv various RPC messages */
