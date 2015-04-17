@@ -274,12 +274,27 @@ func (r *RaftNode) getLogEntry(index uint64) *LogEntry {
 	}
 }
 
+func (r *RaftNode) getLogEntries(start, end uint64) []LogEntry {
+	if start < uint64(len(r.logCache)) {
+		if end < uint64(len(r.logCache)) {
+			end = uint64(len(r.logCache))
+		}
+		return r.logCache[start:(end + 1)]
+	} else {
+		return make([]LogEntry, 0)
+	}
+}
+
 func (r *RaftNode) getLastLogIndex() uint64 {
 	return uint64(len(r.logCache) - 1)
 }
 
 func (r *RaftNode) getLastLogTerm() uint64 {
 	return r.getLogEntry(r.getLastLogIndex()).TermId
+}
+
+func (r *RaftNode) getLogTerm(index uint64) uint64 {
+	return r.getLogEntry(index).TermId
 }
 
 func (r *RaftNode) appendLogEntry(entry LogEntry) error {

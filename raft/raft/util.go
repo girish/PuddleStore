@@ -13,3 +13,17 @@ func (p UInt64Slice) Swap(i, j int) {
 func (p UInt64Slice) Less(i, j int) bool {
 	return p[i] < p[j]
 }
+
+func (r *RaftNode) hasMajority(N uint64) bool {
+	numNodes := len(r.GetOtherNodes())
+	sum := 1
+	for k, v := range r.matchIndex {
+		if k != r.Id && v >= N {
+			sum++
+		}
+	}
+	if sum > numNodes/2 {
+		return true
+	}
+	return false
+}
