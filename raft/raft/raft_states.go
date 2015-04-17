@@ -3,6 +3,7 @@ package raft
 import (
 	"math"
 	"math/rand"
+	"strconv"
 	"time"
 )
 
@@ -181,17 +182,17 @@ func (r *RaftNode) doLeader() state {
 	r.State = LEADER_STATE
 	beats := r.makeBeats()
 
-	r.sendNoop()
+	// r.sendNoop()
 
 	for {
 		select {
 		case <-beats:
 			r.Debug("sendHeartBeats: entered\n")
-			f, _ := r.sendHeartBeats()
-			if f {
-				r.sendRequestFail()
-				return r.doFollower
-			}
+			/*f, _ :=*/ r.sendEmptyHeartBeats()
+			//if f {
+			//	r.sendRequestFail()
+			//	return r.doFollower
+			//}
 			beats = r.makeBeats()
 
 		case appendEnt := <-r.appendEntries:
@@ -217,7 +218,7 @@ func (r *RaftNode) doLeader() state {
 			currTerm := r.GetCurrentTerm()
 			candidate := req.CandidateId
 
-			if req.Term < currTerm {
+			if true { //req.Term < currTerm {
 				// Vote request is from an old term, return false.
 				rep <- RequestVoteReply{currTerm, false}
 			} else {
@@ -268,15 +269,16 @@ func (r *RaftNode) doLeader() state {
 
 		case clientReq := <-r.clientRequest:
 			req := clientReq.request
-			rep := clientReq.reply
+			// rep := clientReq.reply
 			//TODO: Should we first check that it's registered?
 			entries := make([]LogEntry, 1)
 			//Fill in the LogEntry based on the request data
-			entries[0] = LogEntry{r.getLastLogIndex() + 1, r.GetCurrentTerm(), req.Command, req.Data, strconv.Itoa(req.SequenceNum)}
+			entries[0] = LogEntry{r.getLastLogIndex() + 1, r.GetCurrentTerm(), req.Command, req.Data, strconv.FormatUint(req.SequenceNum, 10)}
 			r.appendLogEntry(entries[0])
 
 			//we now send it to everyone
 			fallback, maj := r.sendAppendEntries(entries)
+			r.requestMap[req.SequenceNum] = clientReq
 
 			if fallback {
 				//Ahora no estoy tan seguro de hacer esto
@@ -285,13 +287,13 @@ func (r *RaftNode) doLeader() state {
 			}
 
 			if !maj {
-				rep <- ClientReply{REQ_FAILED, 0, *r.LeaderAddr}
+				//rep <- ClientReply{REQ_FAILED, 0, *r.LeaderAddr}
 				//Truncate log, didn't happen
-				r.truncateLog(r.getLastLogIndex())
+				//r.truncateLog(r.getLastLogIndex())
 			} else {
 				//Nos esperamos a que el heartbeat haga commit.
 				//We now cache the response in the response map to reply to it later
-				r.requestMap[r.SequenceNum] = clientReq
+				//r.requestMap[r.SequenceNum] = clientReq
 			}
 			// electionTimeout = makeElectionTimeout()
 		}
@@ -309,13 +311,16 @@ func (r *RaftNode) sendRequestFail() {
 func (r *RaftNode) sendNoop() bool {
 	// Send NOOP as first entry to all nodes.
 	entries := make([]LogEntry, 1)
-	entries[0] = LogEntry{r.getCurrentIndex(), r.GetCurrentTerm(), NOOP, make([]byte, 0), ""}
+	entries[0] = LogEntry{r.getLastLogIndex() + 1, r.GetCurrentTerm(), NOOP, make([]byte, 0), ""}
 	r.appendLogEntry(entries[0])
 	f, maj := r.sendAppendEntries(entries)
 
 	// Leader should fall back, but just got elected. How?
-	if f || !maj {
+	if f {
 		panic("Leader got in but had to fall back. Por que?")
+	}
+	if !maj {
+		panic("major got in but had to fall back. Por que?")
 	}
 
 	//No processLog until we increase the commit index. Which happens in
@@ -395,7 +400,6 @@ func (r *RaftNode) requestVotes(electionResults chan bool) {
 	}()
 }
 
-
 /*func (r *RaftNode) sendHeartBeats() (fallBack, sentToMajority bool) {
 	// TODO: Students should implement this method
 
@@ -469,6 +473,7 @@ func (r *RaftNode) sendEmptyHeartBeats() {
 				r.commitIndex})
 	}
 }
+
 /**
  * This function is used by the leader to send out heartbeats to each of
  * the other nodes. It returns true if the leader should fall back to the
@@ -537,13 +542,15 @@ func (r *RaftNode) sendHeartBeats() (fallBack, sentToMajority bool) {
 	}
 
 	// Calls process log from lastApplied until commit index.
-	for i := r.lastApplied; i <= r.commitIndex; i++ {
-		reply := r.processLog(*r.getLogEntry(i))
-		if reply.status == REQ_FAILED {
-			panic("This should not happen ever! PLZ FIX")
+	if r.lastApplied != r.commitIndex {
+		for i := r.lastApplied; i <= r.commitIndex; i++ {
+			reply := r.processLog(*r.getLogEntry(i))
+			if reply.Status == REQ_FAILED {
+				panic("This should not happen ever! PLZ FIX")
+			}
 		}
+		r.lastApplied = r.commitIndex
 	}
-	r.lastApplied = r.commitIndex
 
 	if succ_nodes > num_nodes/2 {
 		return false, true

@@ -16,7 +16,7 @@ type Config struct {
 func DefaultConfig() *Config {
 	config := new(Config)
 	config.ClusterSize = 3
-	config.ElectionTimeout = time.Millisecond * 150
+	config.ElectionTimeout = time.Millisecond * 150 * 10
 	config.HeartbeatFrequency = time.Millisecond * 50
 	config.NodeIdSize = 2
 	config.LogPath = "raftlogs"
