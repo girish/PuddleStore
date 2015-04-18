@@ -31,14 +31,11 @@ func (r *RaftNode) doFollower() state {
 			candidate := req.CandidateId
 			votedFor := r.GetVotedFor()
 
-			if req.Term < currTerm {
-				// Vote request is from an old term, return false.
-				rep <- RequestVoteReply{currTerm, false}
-			} else {
-				if votedFor == "" || votedFor == candidate.Id {
-					// TODO: Check log to see si el vato la arma.
+			if votedFor == "" || votedFor == candidate.Id {
+				// TODO: Check log to see si el vato la arma.
+				if r.handleCompetingRequestVote(vote) {
+					// return r.doFollower
 					r.setCurrentTerm(req.Term)
-
 					// Set voted for field (already voted)
 					r.setVotedFor(candidate.Id)
 
@@ -47,12 +44,14 @@ func (r *RaftNode) doFollower() state {
 					r.LeaderAddr = nil
 
 					// Respond true, reset eleciton timeout.
-					rep <- RequestVoteReply{currTerm, true}
+					// rep <- RequestVoteReply{currTerm, true}
 					electionTimeout = makeElectionTimeout()
 				} else {
-					// Already voted.
-					rep <- RequestVoteReply{currTerm, false}
+					// Other candidate has a less up to date log.
 				}
+			} else {
+				// Already voted.
+				rep <- RequestVoteReply{currTerm, false}
 			}
 
 		case appendEnt := <-r.appendEntries:
@@ -63,13 +62,16 @@ func (r *RaftNode) doFollower() state {
 			if req.Term < currTerm {
 				rep <- AppendEntriesReply{currTerm, false}
 			} else {
+				r.LeaderAddr = &req.LeaderId
 				r.setCurrentTerm(req.Term)
 
-				if req.PrevLogIndex > r.getLastLogIndex()+1 ||
-					req.PrevLogTerm != r.getLastLogTerm() {
+				entry := r.getLogEntry(req.PrevLogIndex)
+				if entry == nil || entry.TermId != req.PrevLogTerm {
 					rep <- AppendEntriesReply{currTerm, false}
 				} else {
-					r.truncateLog(r.getLastLogIndex() + 1)
+					if req.PrevLogIndex == r.getLastLogIndex() {
+						r.truncateLog(req.PrevLogIndex + 1)
+					}
 
 					if len(req.Entries) > 0 {
 						for i := range req.Entries {
@@ -81,9 +83,19 @@ func (r *RaftNode) doFollower() state {
 						r.commitIndex = uint64(math.Min(float64(req.LeaderCommit), float64(r.getLastLogIndex())))
 					}
 
-					for r.lastApplied < r.commitIndex {
-						r.lastApplied++
-						r.processLog(*r.getLogEntry(r.lastApplied))
+					// Calls process log from lastApplied until commit index.
+					if r.lastApplied < r.commitIndex {
+						i := r.lastApplied
+						if r.lastApplied != 0 {
+							i++
+						}
+						for ; i <= r.commitIndex; i++ {
+							reply := r.processLog(*r.getLogEntry(i))
+							if reply.Status == REQ_FAILED {
+								panic("This should not happen ever! PLZ FIX")
+							}
+						}
+						r.lastApplied = r.commitIndex
 					}
 
 					rep <- AppendEntriesReply{currTerm, true}
@@ -140,9 +152,23 @@ func (r *RaftNode) doCandidate() state {
 			}
 
 		case vote := <-r.requestVote:
+			req := vote.request
+			candidate := req.CandidateId
 			if r.handleCompetingRequestVote(vote) {
+				r.setCurrentTerm(req.Term)
+				// Set voted for field (already voted)
+				r.setVotedFor(candidate.Id)
+
+				// Election in progess. There is no leader
+				// Set to nil
+				r.LeaderAddr = nil
+
+				// Respond true, reset eleciton timeout.
+				// rep <- RequestVoteReply{currTerm, true}
+				electionTimeout = makeElectionTimeout()
 				return r.doFollower
 			} else {
+				// Other candidate has a less up to date log.
 			}
 
 		case appendEnt := <-r.appendEntries:
@@ -180,19 +206,25 @@ func (r *RaftNode) doCandidate() state {
 func (r *RaftNode) doLeader() state {
 	r.Out("Transitioning to LEADER_STATE")
 	r.State = LEADER_STATE
+	r.LeaderAddr = r.GetLocalAddr()
 	beats := r.makeBeats()
 
-	// r.sendNoop()
+	// Set up all next index values
+	for _, n := range r.GetOtherNodes() {
+		r.nextIndex[n.Id] = r.getLastLogIndex() + 1
+	}
+
+	r.sendNoop()
 
 	for {
 		select {
 		case <-beats:
 			r.Debug("sendHeartBeats: entered\n")
-			/*f, _ :=*/ r.sendEmptyHeartBeats()
-			//if f {
-			//	r.sendRequestFail()
-			//	return r.doFollower
-			//}
+			f, _ := r.sendHeartBeats()
+			if f {
+				r.sendRequestFail()
+				return r.doFollower
+			}
 			beats = r.makeBeats()
 
 		case appendEnt := <-r.appendEntries:
@@ -214,15 +246,9 @@ func (r *RaftNode) doLeader() state {
 
 		case vote := <-r.requestVote:
 			req := vote.request
-			rep := vote.reply
-			currTerm := r.GetCurrentTerm()
 			candidate := req.CandidateId
 
-			if true { //req.Term < currTerm {
-				// Vote request is from an old term, return false.
-				rep <- RequestVoteReply{currTerm, false}
-			} else {
-				// TODO: Check log to see si el vato la arma.
+			if r.handleCompetingRequestVote(vote) {
 				r.setCurrentTerm(req.Term)
 
 				// Set voted for field (already voted)
@@ -233,6 +259,8 @@ func (r *RaftNode) doLeader() state {
 				r.LeaderAddr = nil
 				r.sendRequestFail()
 				return r.doFollower
+			} else {
+				// Other candidate has a less up to date log.
 			}
 
 		case regClient := <-r.registerClient:
@@ -339,20 +367,39 @@ func (r *RaftNode) sendNoop() bool {
  * competing RequestVote is called. It will return true if the caller should
  * fall back to the follower state.
  */
+// DICE QUE ES SOLO CANDIDATE O LEADER, PERO SEGUN YO FOLLOWER JALA TAMBIEN NO?
 func (r *RaftNode) handleCompetingRequestVote(msg RequestVoteMsg) bool {
 	req := msg.request
 	rep := msg.reply
+	prevIndex := r.commitIndex
+	prevTerm := r.getLogTerm(prevIndex)
 	currTerm := r.GetCurrentTerm()
 
-	if req.Term < currTerm {
+	if prevTerm > req.LastLogTerm { // My commit term is greater, no vote.
 		rep <- RequestVoteReply{currTerm, false}
 		return false
-	} else if req.Term == currTerm {
-		rep <- RequestVoteReply{currTerm, false}
-		return false
+	} else if prevTerm < req.LastLogTerm { // My commit term is smaller, vote.
+		rep <- RequestVoteReply{currTerm, true}
+		return true
+	} else { // Same commit indexes
+		if prevIndex > req.LastLogIndex { // My commit index is greater, no vote.
+			rep <- RequestVoteReply{currTerm, false}
+			return false
+		} else if prevIndex < req.LastLogIndex { // My commit index is smaller, vote.
+			rep <- RequestVoteReply{currTerm, true}
+			return true
+		} else { // Commit index and term are the same. Tiebreaker with currTerms
+			// Previous election or election that I already voted for or
+			// currently pursuing. No vote.
+			if req.Term <= currTerm {
+				rep <- RequestVoteReply{currTerm, false}
+				return false
+			} else { // Greater election term, give vote.
+				rep <- RequestVoteReply{currTerm, true}
+				return true
+			}
+		}
 	}
-	rep <- RequestVoteReply{currTerm, true}
-	return true
 }
 
 /**
@@ -361,17 +408,18 @@ func (r *RaftNode) handleCompetingRequestVote(msg RequestVoteMsg) bool {
  * successful election, false otherwise.
  */
 func (r *RaftNode) requestVotes(electionResults chan bool) {
-	// TODO: Students should implement this method
-	// RequestVoteRequest
 	go func() {
 		nodes := r.GetOtherNodes()
 		num_nodes := len(nodes)
 		votes := 1
 		r.setVotedFor(r.Id)
 		for _, n := range nodes {
+			//reply, _ := r.RequestVoteRPC(&n,
+			//	RequestVoteRequest{r.GetCurrentTerm(), *r.GetLocalAddr(),
+			//		r.getLastLogIndex(), r.getLastLogTerm()})
 			reply, _ := r.RequestVoteRPC(&n,
 				RequestVoteRequest{r.GetCurrentTerm(), *r.GetLocalAddr(),
-					r.getLastLogIndex(), r.getLastLogTerm()})
+					r.commitIndex, r.getLogTerm(r.commitIndex)})
 
 			if reply == nil {
 				// Could not reach node for vote.
@@ -496,6 +544,7 @@ func (r *RaftNode) sendHeartBeats() (fallBack, sentToMajority bool) {
 		prevLogIndex := r.nextIndex[n.Id] - 1
 		//TODO: Que pasa si el next index esta mas arriba que el log del leader?
 		// Esta madre va a tronar.
+		// r.Out("nextIndex vs prevLog vs lastLog %v, %v, %v, %v", r.nextIndex[n.Id], prevLogIndex, r.getLastLogIndex(), r.logCache)
 		prevLogTerm := r.getLogEntry(prevLogIndex).TermId
 		reply, _ := r.AppendEntriesRPC(&n,
 			AppendEntriesRequest{r.GetCurrentTerm(), *r.GetLocalAddr(),
@@ -517,6 +566,7 @@ func (r *RaftNode) sendHeartBeats() (fallBack, sentToMajority bool) {
 			r.matchIndex[n.Id] = r.nextIndex[n.Id] - 1
 			if (nextIndex - 1) != r.getLastLogIndex() {
 				// TODO
+				// r.Out("nextIndex vs lastLog %v, %v", nextIndex, r.getLastLogIndex())
 				entries := r.getLogEntries(nextIndex, r.getLastLogIndex())
 				reply, _ = r.AppendEntriesRPC(&n,
 					AppendEntriesRequest{r.GetCurrentTerm(), *r.GetLocalAddr(),
@@ -543,7 +593,11 @@ func (r *RaftNode) sendHeartBeats() (fallBack, sentToMajority bool) {
 
 	// Calls process log from lastApplied until commit index.
 	if r.lastApplied != r.commitIndex {
-		for i := r.lastApplied; i <= r.commitIndex; i++ {
+		i := r.lastApplied
+		if r.lastApplied != 0 {
+			i++
+		}
+		for ; i <= r.commitIndex; i++ {
 			reply := r.processLog(*r.getLogEntry(i))
 			if reply.Status == REQ_FAILED {
 				panic("This should not happen ever! PLZ FIX")

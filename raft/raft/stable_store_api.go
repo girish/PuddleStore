@@ -276,10 +276,12 @@ func (r *RaftNode) getLogEntry(index uint64) *LogEntry {
 
 func (r *RaftNode) getLogEntries(start, end uint64) []LogEntry {
 	if start < uint64(len(r.logCache)) {
-		if end < uint64(len(r.logCache)) {
+		if end > uint64(len(r.logCache)) {
 			end = uint64(len(r.logCache))
+		} else {
+			end++
 		}
-		return r.logCache[start:(end + 1)]
+		return r.logCache[start:end]
 	} else {
 		return make([]LogEntry, 0)
 	}
