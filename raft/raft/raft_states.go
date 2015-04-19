@@ -16,7 +16,6 @@ func (r *RaftNode) doFollower() state {
 	r.Out("Transitioning to FOLLOWER_STATE")
 	r.State = FOLLOWER_STATE
 	electionTimeout := makeElectionTimeout()
-	// TODO: Students should implement this method
 	for {
 		select {
 		case shutdown := <-r.gracefulExit:
@@ -25,34 +24,38 @@ func (r *RaftNode) doFollower() state {
 			}
 
 		case vote := <-r.requestVote:
+			r.Out("Request vote received")
 			req := vote.request
-			rep := vote.reply
+			//rep := vote.reply
 			currTerm := r.GetCurrentTerm()
 			candidate := req.CandidateId
-			votedFor := r.GetVotedFor()
+			//votedFor := r.GetVotedFor()
 
-			if votedFor == "" || votedFor == candidate.Id {
-				// TODO: Check log to see si el vato la arma.
-				if r.handleCompetingRequestVote(vote) {
-					// return r.doFollower
-					r.setCurrentTerm(req.Term)
-					// Set voted for field (already voted)
-					r.setVotedFor(candidate.Id)
+			//if votedFor == "" || votedFor == candidate.Id {
+			// TODO: Check log to see si el vato la arma.
+			if r.handleCompetingRequestVote(vote) {
+				// return r.doFollower
+				r.setCurrentTerm(req.Term)
+				// Set voted for field (already voted)
+				r.setVotedFor(candidate.Id)
 
-					// Election in progess. There is no leader
-					// Set to nil
-					r.LeaderAddr = nil
+				// Election in progess. There is no leader
+				// Set to nil
+				r.LeaderAddr = nil
 
-					// Respond true, reset eleciton timeout.
-					// rep <- RequestVoteReply{currTerm, true}
-					electionTimeout = makeElectionTimeout()
-				} else {
-					// Other candidate has a less up to date log.
-				}
+				// Respond true, reset eleciton timeout.
+				// rep <- RequestVoteReply{currTerm, true}
+				electionTimeout = makeElectionTimeout()
 			} else {
-				// Already voted.
-				rep <- RequestVoteReply{currTerm, false}
+				// Other candidate has a less up to date log.
+				if req.Term > currTerm {
+					r.setCurrentTerm(req.Term)
+				}
 			}
+			//} else {
+			// Already voted.
+			//	rep <- RequestVoteReply{currTerm, false}
+			//}
 
 		case appendEnt := <-r.appendEntries:
 			req := appendEnt.request
@@ -64,6 +67,8 @@ func (r *RaftNode) doFollower() state {
 			} else {
 				r.LeaderAddr = &req.LeaderId
 				r.setCurrentTerm(req.Term)
+				// Set voted for field
+				r.setVotedFor("")
 
 				entry := r.getLogEntry(req.PrevLogIndex)
 				if entry == nil || entry.TermId != req.PrevLogTerm {
@@ -131,6 +136,7 @@ func (r *RaftNode) doCandidate() state {
 
 	r.setCurrentTerm(r.GetCurrentTerm() + 1)
 	r.State = CANDIDATE_STATE
+	r.LeaderAddr = nil
 
 	electionResults := make(chan bool)
 	electionTimeout := makeElectionTimeout()
@@ -154,6 +160,7 @@ func (r *RaftNode) doCandidate() state {
 		case vote := <-r.requestVote:
 			req := vote.request
 			candidate := req.CandidateId
+			currTerm := r.GetCurrentTerm()
 			if r.handleCompetingRequestVote(vote) {
 				r.setCurrentTerm(req.Term)
 				// Set voted for field (already voted)
@@ -169,6 +176,9 @@ func (r *RaftNode) doCandidate() state {
 				return r.doFollower
 			} else {
 				// Other candidate has a less up to date log.
+				if req.Term > currTerm {
+					r.setCurrentTerm(req.Term)
+				}
 			}
 
 		case appendEnt := <-r.appendEntries:
@@ -180,13 +190,17 @@ func (r *RaftNode) doCandidate() state {
 			/*if req.Term < currTerm {
 				rep <- AppendEntriesReply{currTerm, false}
 			} else {*/
-			r.LeaderAddr = &leader
-			r.setCurrentTerm(req.Term)
-			r.setVotedFor("")
-			rep <- AppendEntriesReply{currTerm, true}
-			return r.doFollower
-			//}
-			electionTimeout = makeElectionTimeout()
+			if req.Term >= currTerm {
+				r.LeaderAddr = &leader
+				r.setCurrentTerm(req.Term)
+				r.setVotedFor("")
+				rep <- AppendEntriesReply{currTerm, true}
+				electionTimeout = makeElectionTimeout()
+				return r.doFollower
+				//}
+			} else {
+				rep <- AppendEntriesReply{currTerm, false}
+			}
 
 		case regClient := <-r.registerClient:
 			// req := regClient.request
@@ -194,7 +208,7 @@ func (r *RaftNode) doCandidate() state {
 			rep <- RegisterClientReply{ELECTION_IN_PROGRESS, 0, NodeAddr{"", ""}}
 
 		case <-electionTimeout:
-			return r.doCandidate
+			return r.doFollower
 		}
 	}
 	return nil
@@ -214,20 +228,22 @@ func (r *RaftNode) doLeader() state {
 		r.nextIndex[n.Id] = r.getLastLogIndex() + 1
 	}
 
+	r.sendHeartBeats()
 	r.sendNoop()
-
 	for {
 		select {
 		case <-beats:
 			r.Debug("sendHeartBeats: entered\n")
 			f, _ := r.sendHeartBeats()
 			if f {
+				r.Out("heartbeat fallback")
 				r.sendRequestFail()
 				return r.doFollower
 			}
 			beats = r.makeBeats()
 
 		case appendEnt := <-r.appendEntries:
+			r.Debug("append entries leader: entered\n")
 			req := appendEnt.request
 			rep := appendEnt.reply
 			currTerm := r.GetCurrentTerm()
@@ -241,13 +257,15 @@ func (r *RaftNode) doLeader() state {
 				r.setVotedFor("")
 				rep <- AppendEntriesReply{currTerm, true}
 				r.sendRequestFail()
+				r.Out("appendEnt fallback")
 				return r.doFollower
 			}
 
 		case vote := <-r.requestVote:
+			r.Debug("request vote leader: entered\n")
 			req := vote.request
 			candidate := req.CandidateId
-
+			currTerm := r.GetCurrentTerm()
 			if r.handleCompetingRequestVote(vote) {
 				r.setCurrentTerm(req.Term)
 
@@ -258,9 +276,13 @@ func (r *RaftNode) doLeader() state {
 				// Set to nil
 				r.LeaderAddr = nil
 				r.sendRequestFail()
+				r.Out("vote fallback by %v", candidate.Id)
 				return r.doFollower
 			} else {
 				// Other candidate has a less up to date log.
+				if req.Term > currTerm {
+					r.setCurrentTerm(req.Term)
+				}
 			}
 
 		case regClient := <-r.registerClient:
@@ -281,6 +303,7 @@ func (r *RaftNode) doLeader() state {
 				}
 				//not sure we need to do this
 				r.sendRequestFail()
+				r.Out("reg client fallback by %v")
 				return r.doFollower
 			}
 
@@ -311,6 +334,7 @@ func (r *RaftNode) doLeader() state {
 			if fallback {
 				//Ahora no estoy tan seguro de hacer esto
 				r.sendRequestFail()
+				r.Out("client req fallback by %v")
 				return r.doFollower
 			}
 
@@ -341,16 +365,12 @@ func (r *RaftNode) sendNoop() bool {
 	entries := make([]LogEntry, 1)
 	entries[0] = LogEntry{r.getLastLogIndex() + 1, r.GetCurrentTerm(), NOOP, make([]byte, 0), ""}
 	r.appendLogEntry(entries[0])
-	f, maj := r.sendAppendEntries(entries)
+	f, _ := r.sendAppendEntries(entries)
 
-	// Leader should fall back, but just got elected. How?
+	//Leader should fall back, but just got elected. How?
 	if f {
-		panic("Leader got in but had to fall back. Por que?")
+		return true
 	}
-	if !maj {
-		panic("major got in but had to fall back. Por que?")
-	}
-
 	//No processLog until we increase the commit index. Which happens in
 	//heartbeat.
 	// if maj {
@@ -359,7 +379,7 @@ func (r *RaftNode) sendNoop() bool {
 	// }
 	// r.sendAppendEntries(make([]LogEntry, 0))
 
-	return true
+	return false
 }
 
 /**
@@ -396,6 +416,7 @@ func (r *RaftNode) handleCompetingRequestVote(msg RequestVoteMsg) bool {
 				return false
 			} else { // Greater election term, give vote.
 				rep <- RequestVoteReply{currTerm, true}
+				r.Out("AQUI se jode")
 				return true
 			}
 		}
@@ -414,6 +435,9 @@ func (r *RaftNode) requestVotes(electionResults chan bool) {
 		votes := 1
 		r.setVotedFor(r.Id)
 		for _, n := range nodes {
+			if n.Id == r.Id {
+				continue
+			}
 			//reply, _ := r.RequestVoteRPC(&n,
 			//	RequestVoteRequest{r.GetCurrentTerm(), *r.GetLocalAddr(),
 			//		r.getLastLogIndex(), r.getLastLogTerm()})
@@ -427,7 +451,7 @@ func (r *RaftNode) requestVotes(electionResults chan bool) {
 			}
 
 			if r.GetCurrentTerm() < reply.Term {
-				r.Debug("YA VALIO %d < %d\n", r.GetCurrentTerm(), reply.Term)
+				r.Out("YA VALIO %d < %d\n", r.GetCurrentTerm(), reply.Term)
 				electionResults <- false // YA VALIO MADRE
 				return
 			}
@@ -436,15 +460,15 @@ func (r *RaftNode) requestVotes(electionResults chan bool) {
 			if reply.VoteGranted {
 				votes++
 			}
-			if votes > num_nodes/2 {
-				electionResults <- true
-				r.Debug("RequestVotes: won with %d votes\n", votes)
-				return
-			}
-		}
 
+		}
+		if votes > num_nodes/2 {
+			electionResults <- true
+			r.Debug("RequestVotes: won with %d votes\n", votes)
+			return
+		}
 		electionResults <- false
-		r.Debug("RequestVotes: lost with %d votes\n", votes)
+		r.Out("RequestVotes: lost with %d votes\n", votes)
 	}()
 }
 
@@ -533,7 +557,7 @@ func (r *RaftNode) sendEmptyHeartBeats() {
  * machine should be given the new log entries via processLog.
  */
 func (r *RaftNode) sendHeartBeats() (fallBack, sentToMajority bool) {
-
+	r.Out("HeartBeat")
 	nodes := r.GetOtherNodes()
 	num_nodes := len(nodes)
 	succ_nodes := 1
@@ -556,7 +580,8 @@ func (r *RaftNode) sendHeartBeats() (fallBack, sentToMajority bool) {
 		}
 
 		if r.GetCurrentTerm() < reply.Term {
-			return true, true
+			r.setCurrentTerm(reply.Term)
+			return true, false
 		}
 
 		if reply.Success {
@@ -643,7 +668,7 @@ func (r *RaftNode) sendAppendEntries(entries []LogEntry) (fallBack, sentToMajori
 		}
 
 		if r.GetCurrentTerm() < reply.Term {
-			return true, true
+			return true, false
 		} else if !reply.Success {
 			// TODO
 		}
@@ -661,7 +686,7 @@ func (r *RaftNode) sendAppendEntries(entries []LogEntry) (fallBack, sentToMajori
  */
 func makeElectionTimeout() <-chan time.Time {
 	// TODO: Students should implement this method
-	millis := rand.Int()%150 + 150
+	millis := rand.Int()%300 + 150
 	return time.After(time.Millisecond * time.Duration(millis))
 }
 
