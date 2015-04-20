@@ -81,6 +81,8 @@ type RequestVoteRequest struct {
 
 	/* The term of the candidate's last log entry */
 	LastLogTerm uint64
+
+	CurrentIndex uint64
 }
 
 type RequestVoteReply struct {

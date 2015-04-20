@@ -1,0 +1,15 @@
+We implemented all required functions that define the state of a node according to the Raft protocol. We only implemented the basics, no extra required functionality. To do this we have several helper functions explained below. 
+
+SendRequestVotes launches a go func that request votes from all the other nodes. This function is executed when a node enters in candidate state. This go func communicates with the main thread through an election channel to which it communicates that it needs to fallback or a failed election. This allows the node to stay responsive even when requesting votes. 
+
+SendHeartBeats also launches a go func that sends a heartbeat to all nodes. Similar to SendRequestVotes, this function uses a channel to communicate with the main thread about fallbacks or failing to send a request to a majority of nodes. This function is also in charge of fixing log inconsistencies with the followers once they reply false to the heartbeats. 
+
+Something that you should know is that we added another field to the RequestVote struct. We added this because the two existing fields that referred to the lastLogIndex/Term we based them on the candidate's commit index as opposed to the actual last log index. We did this because there is the situation in the case of a network partition when the isolated leader that has no majority received request from a client to append many entries, more than what the other side of the partition has received. When the connection is re-established, the isolated leader would fall back to follower, but if the good leader looses connection before it can fix the logs of the previous isolated leader (now a follower) then an election will occur. If the previous isolated leader becomes a candidate, it has the possibility of winning because the basis of vote granting is based on the actual log index of the candidate as opposed to its commit index. This new field is the current log index of the candidate which comes into play when the commit index and term match between the follower and the candidate. Then the winner should be the one with the longest log. 
+
+We tested this extensibly. The TestLeaderElection makes sure that there is a client and that there is match between the logs and commit index of all the followers. The test will fail if after 200 iterations of checking for a leader there is no consensus. We found that it generally runs and in only very few occasions this happens but just letting you know. 
+
+TestDisruption disables several nodes in several occasions forcing various leader elections among the nodes that are still responsive. Remember that there is a NOOP entry appended every time there is a leader in a given term. With this NOOP we are able to modify the log and increase the commit index in the case of consensus. With this in mind TestDisrupt tests that after several partitions and various leader, at the end there is one leader, stability in terms and logs. 
+
+From the previous two tests we were able to solve all the leader election problem and log replication issues. 
+
+-dcorrea, mm193 

@@ -61,8 +61,10 @@ func (r *RaftNode) doFollower() state {
 			req := appendEnt.request
 			rep := appendEnt.reply
 			currTerm := r.GetCurrentTerm()
+			// r.Out("Recieved heartbeat from %v", req.LeaderId.Id)
 
 			if req.Term < currTerm {
+				r.Out("Rejected heartbeat from %v because of terms", req.LeaderId.Id)
 				rep <- AppendEntriesReply{currTerm, false}
 			} else {
 				r.LeaderAddr = &req.LeaderId
@@ -71,11 +73,16 @@ func (r *RaftNode) doFollower() state {
 				r.setVotedFor("")
 
 				entry := r.getLogEntry(req.PrevLogIndex)
-				if entry == nil || entry.TermId != req.PrevLogTerm {
+				if entry == nil || entry.TermId != req.PrevLogTerm { //|| req.PrevLogIndex != r.getLastLogIndex() {
+					r.Out("Rejected heartbeat from %v because of miss", req.LeaderId.Id)
 					rep <- AppendEntriesReply{currTerm, false}
 				} else {
-					if req.PrevLogIndex == r.getLastLogIndex() {
+					if req.PrevLogIndex+1 > r.commitIndex {
 						r.truncateLog(req.PrevLogIndex + 1)
+					} else {
+						///// r.truncateLog(r.commitIndex + 1)
+						r.truncateLog(req.PrevLogIndex + 1)
+						r.commitIndex = req.PrevLogIndex
 					}
 
 					if len(req.Entries) > 0 {
@@ -137,6 +144,7 @@ func (r *RaftNode) doCandidate() state {
 	r.setCurrentTerm(r.GetCurrentTerm() + 1)
 	r.State = CANDIDATE_STATE
 	r.LeaderAddr = nil
+	r.setVotedFor(r.Id)
 
 	electionResults := make(chan bool)
 	electionTimeout := makeElectionTimeout()
@@ -186,6 +194,7 @@ func (r *RaftNode) doCandidate() state {
 			rep := appendEnt.reply
 			currTerm := r.GetCurrentTerm()
 			leader := req.LeaderId
+			r.Out("Recieved heartbeat from %v", leader.Id)
 
 			/*if req.Term < currTerm {
 				rep <- AppendEntriesReply{currTerm, false}
@@ -220,34 +229,49 @@ func (r *RaftNode) doCandidate() state {
 func (r *RaftNode) doLeader() state {
 	r.Out("Transitioning to LEADER_STATE")
 	r.State = LEADER_STATE
+	r.setVotedFor("")
 	r.LeaderAddr = r.GetLocalAddr()
 	beats := r.makeBeats()
+	fallback := make(chan bool)
+	finish := make(chan bool, 1)
 
 	// Set up all next index values
 	for _, n := range r.GetOtherNodes() {
 		r.nextIndex[n.Id] = r.getLastLogIndex() + 1
 	}
 
-	r.sendHeartBeats()
+	// r.sendHeartBeats()
 	r.sendNoop()
+	r.Out("before noop The channel has %v\n", finish)
+	finish <- true
+	r.Out("The channel has %v\n", finish)
 	for {
 		select {
-		case <-beats:
-			r.Debug("sendHeartBeats: entered\n")
-			f, _ := r.sendHeartBeats()
-			if f {
-				r.Out("heartbeat fallback")
-				r.sendRequestFail()
-				return r.doFollower
+
+		case shutdown := <-r.gracefulExit:
+			if shutdown {
+				return nil
 			}
-			beats = r.makeBeats()
+		case <-beats:
+			select {
+			case <-finish:
+				// r.Out("sendHeartBeats: entered\n")
+				r.sendHeartBeats(fallback, finish)
+				beats = r.makeBeats()
+			default:
+				beats = time.After(time.Millisecond * 1)
+			}
+		case <-fallback:
+			r.Out("heartbeat fallback")
+			r.sendRequestFail()
+			return r.doFollower
 
 		case appendEnt := <-r.appendEntries:
-			r.Debug("append entries leader: entered\n")
 			req := appendEnt.request
 			rep := appendEnt.reply
 			currTerm := r.GetCurrentTerm()
 			leader := req.LeaderId
+			r.Out("Recieved heartbeat from %v", leader.Id)
 
 			if req.Term < currTerm {
 				rep <- AppendEntriesReply{currTerm, false}
@@ -286,68 +310,79 @@ func (r *RaftNode) doLeader() state {
 			}
 
 		case regClient := <-r.registerClient:
-			rep := regClient.reply
+			req := regClient.request
+			//rep := regClient.reply
 
 			entries := make([]LogEntry, 1)
-			entries[0] = LogEntry{r.getLastLogIndex() + 1, r.GetCurrentTerm(), CLIENT_REGISTRATION, make([]byte, 0), ""}
+			entries[0] = LogEntry{r.getLastLogIndex() + 1, r.GetCurrentTerm(), CLIENT_REGISTRATION, []byte(req.FromNode.Id), ""}
 			//we add it to the log
 			r.appendLogEntry(entries[0])
 
-			fallback, maj := r.sendAppendEntries(entries)
+			/*
+				fallback, maj := r.sendAppendEntries(entries)
 
-			if fallback {
-				if maj {
-					rep <- RegisterClientReply{OK, r.getLastLogIndex(), *r.LeaderAddr}
-				} else {
-					rep <- RegisterClientReply{REQ_FAILED, 0, *r.LeaderAddr}
+				if fallback {
+					if maj {
+						rep <- RegisterClientReply{OK, r.getLastLogIndex(), *r.LeaderAddr}
+					} else {
+						rep <- RegisterClientReply{REQ_FAILED, 0, *r.LeaderAddr}
+					}
+					//not sure we need to do this
+					r.sendRequestFail()
+					r.LeaderAddr = nil
+					r.Out("reg client fallback by %v")
+					return r.doFollower
 				}
-				//not sure we need to do this
-				r.sendRequestFail()
-				r.Out("reg client fallback by %v")
-				return r.doFollower
-			}
 
-			if !maj {
-				rep <- RegisterClientReply{REQ_FAILED, 0, *r.LeaderAddr}
-				//Truncate log, didnt happen
-				r.truncateLog(r.getLastLogIndex())
-			} else {
-				//r.processLog(entries[0])
-				//r.commitIndex++
-				//r.sendAppendEntries(make([]LogEntry, 0))
-				rep <- RegisterClientReply{OK, r.getLastLogIndex(), *r.LeaderAddr}
-			}
+				if !maj {
+					rep <- RegisterClientReply{REQ_FAILED, 0, *r.LeaderAddr}
+					//Truncate log, didnt happen
+					r.truncateLog(r.getLastLogIndex())
+				} else {
+					//r.processLog(entries[0])
+					//r.commitIndex++
+					//r.sendAppendEntries(make([]LogEntry, 0))
+					rep <- RegisterClientReply{OK, r.getLastLogIndex(), *r.LeaderAddr}
+				}*/
 
 		case clientReq := <-r.clientRequest:
 			req := clientReq.request
-			// rep := clientReq.reply
+			rep := clientReq.reply
 			//TODO: Should we first check that it's registered?
-			entries := make([]LogEntry, 1)
-			//Fill in the LogEntry based on the request data
-			entries[0] = LogEntry{r.getLastLogIndex() + 1, r.GetCurrentTerm(), req.Command, req.Data, strconv.FormatUint(req.SequenceNum, 10)}
-			r.appendLogEntry(entries[0])
+			entry := r.getLogEntry(req.ClientId)
+			if entry.Command == CLIENT_REGISTRATION { //&& string(entry.Data) == req. {
+				entries := make([]LogEntry, 1)
+				//Fill in the LogEntry based on the request data
+				entries[0] = LogEntry{r.getLastLogIndex() + 1, r.GetCurrentTerm(), req.Command, req.Data, strconv.FormatUint(req.SequenceNum, 10)}
+				r.appendLogEntry(entries[0])
 
-			//we now send it to everyone
-			fallback, maj := r.sendAppendEntries(entries)
-			r.requestMap[req.SequenceNum] = clientReq
+				//we now send it to everyone
+				// fallback, maj := r.sendAppendEntries(entries)
+				r.requestMap[req.SequenceNum] = clientReq
 
-			if fallback {
-				//Ahora no estoy tan seguro de hacer esto
-				r.sendRequestFail()
-				r.Out("client req fallback by %v")
-				return r.doFollower
-			}
+				/*
+					if fallback {
+						//Ahora no estoy tan seguro de hacer esto
+						r.sendRequestFail()
+						r.Out("client req fallback by %v")
+						return r.doFollower
+					}
 
-			if !maj {
-				//rep <- ClientReply{REQ_FAILED, 0, *r.LeaderAddr}
-				//Truncate log, didn't happen
-				//r.truncateLog(r.getLastLogIndex())
+					if !maj {
+						//rep <- ClientReply{REQ_FAILED, 0, *r.LeaderAddr}
+						//Truncate log, didn't happen
+						//r.truncateLog(r.getLastLogIndex())
+					} else {
+						//Nos esperamos a que el heartbeat haga commit.
+						//We now cache the response in the response map to reply to it later
+						//r.requestMap[r.SequenceNum] = clientReq
+					}
+					// electionTimeout = makeElectionTimeout()
+				*/
 			} else {
-				//Nos esperamos a que el heartbeat haga commit.
-				//We now cache the response in the response map to reply to it later
-				//r.requestMap[r.SequenceNum] = clientReq
+				rep <- ClientReply{REQ_FAILED, "", *r.LeaderAddr}
 			}
-			// electionTimeout = makeElectionTimeout()
+
 		}
 	}
 
@@ -364,13 +399,14 @@ func (r *RaftNode) sendNoop() bool {
 	// Send NOOP as first entry to all nodes.
 	entries := make([]LogEntry, 1)
 	entries[0] = LogEntry{r.getLastLogIndex() + 1, r.GetCurrentTerm(), NOOP, make([]byte, 0), ""}
+	r.Out("Noop logged with inde %v and term %v\n", r.getLastLogIndex()+1, r.GetCurrentTerm())
 	r.appendLogEntry(entries[0])
-	f, _ := r.sendAppendEntries(entries)
+	//f, _ := r.sendAppendEntries(entries)
 
 	//Leader should fall back, but just got elected. How?
-	if f {
-		return true
-	}
+	//if f {
+	//	return true
+	//}
 	//No processLog until we increase the commit index. Which happens in
 	//heartbeat.
 	// if maj {
@@ -395,6 +431,11 @@ func (r *RaftNode) handleCompetingRequestVote(msg RequestVoteMsg) bool {
 	prevTerm := r.getLogTerm(prevIndex)
 	currTerm := r.GetCurrentTerm()
 
+	//if r.GetVotedFor() != "" {
+	//	rep <- RequestVoteReply{currTerm, false}
+	//	return false
+	//}
+
 	if prevTerm > req.LastLogTerm { // My commit term is greater, no vote.
 		rep <- RequestVoteReply{currTerm, false}
 		return false
@@ -411,13 +452,29 @@ func (r *RaftNode) handleCompetingRequestVote(msg RequestVoteMsg) bool {
 		} else { // Commit index and term are the same. Tiebreaker with currTerms
 			// Previous election or election that I already voted for or
 			// currently pursuing. No vote.
-			if req.Term <= currTerm {
+			if req.CurrentIndex < r.getLastLogIndex() {
 				rep <- RequestVoteReply{currTerm, false}
 				return false
-			} else { // Greater election term, give vote.
+			} else if req.CurrentIndex > r.getLastLogIndex() {
 				rep <- RequestVoteReply{currTerm, true}
-				r.Out("AQUI se jode")
 				return true
+			} else {
+				if req.Term < currTerm {
+					rep <- RequestVoteReply{currTerm, false}
+					return false
+				} else if req.Term == currTerm {
+					if r.GetVotedFor() != "" || r.State == LEADER_STATE {
+						rep <- RequestVoteReply{currTerm, false}
+						return false
+					} else {
+						rep <- RequestVoteReply{currTerm, true}
+						return true
+					}
+
+				} else { // Greater election term, give vote.
+					rep <- RequestVoteReply{currTerm, true}
+					return true
+				}
 			}
 		}
 	}
@@ -433,7 +490,7 @@ func (r *RaftNode) requestVotes(electionResults chan bool) {
 		nodes := r.GetOtherNodes()
 		num_nodes := len(nodes)
 		votes := 1
-		r.setVotedFor(r.Id)
+		// r.setVotedFor(r.Id)
 		for _, n := range nodes {
 			if n.Id == r.Id {
 				continue
@@ -443,7 +500,7 @@ func (r *RaftNode) requestVotes(electionResults chan bool) {
 			//		r.getLastLogIndex(), r.getLastLogTerm()})
 			reply, _ := r.RequestVoteRPC(&n,
 				RequestVoteRequest{r.GetCurrentTerm(), *r.GetLocalAddr(),
-					r.commitIndex, r.getLogTerm(r.commitIndex)})
+					r.commitIndex, r.getLogTerm(r.commitIndex), r.getLastLogIndex()})
 
 			if reply == nil {
 				// Could not reach node for vote.
@@ -556,86 +613,94 @@ func (r *RaftNode) sendEmptyHeartBeats() {
  * up to that index. Once committed to that index, the replicated state
  * machine should be given the new log entries via processLog.
  */
-func (r *RaftNode) sendHeartBeats() (fallBack, sentToMajority bool) {
-	r.Out("HeartBeat")
-	nodes := r.GetOtherNodes()
-	num_nodes := len(nodes)
-	succ_nodes := 1
-	for _, n := range nodes {
-		if n.Id == r.Id {
-			continue
+func (r *RaftNode) sendHeartBeats(fallback, finish chan bool) { //(fallBack, sentToMajority bool) {
+	go func() {
+		nodes := r.GetOtherNodes()
+		num_nodes := len(nodes)
+		succ_nodes := 1
+		for _, n := range nodes {
+			if n.Id == r.Id {
+				continue
+			}
+			if r.State != LEADER_STATE {
+				return
+			}
+			prevLogIndex := r.nextIndex[n.Id] - 1
+			//TODO: Que pasa si el next index esta mas arriba que el log del leader?
+			// Esta madre va a tronar.
+			//r.Out("nextIndex vs prevLog vs lastLog %v, %v, %v, %v", r.nextIndex[n.Id], prevLogIndex, r.getLastLogIndex(), r.logCache)
+			prevLogTerm := r.getLogEntry(prevLogIndex).TermId
+			//r.Out("HeartBeat to %v", n.Id)
+			reply, _ := r.AppendEntriesRPC(&n,
+				AppendEntriesRequest{r.GetCurrentTerm(), *r.GetLocalAddr(),
+					prevLogIndex, prevLogTerm, make([]LogEntry, 0),
+					r.commitIndex})
+
+			if reply == nil {
+				continue
+			}
+
+			if r.GetCurrentTerm() < reply.Term {
+				r.setCurrentTerm(reply.Term)
+				// return true, false
+				fallback <- true
+				return
+			}
+
+			if reply.Success {
+				succ_nodes++
+				nextIndex := r.nextIndex[n.Id]
+				//Aqui segun you se vuelven iguales porque ya apendearon
+				r.matchIndex[n.Id] = r.nextIndex[n.Id] - 1
+				if (nextIndex - 1) != r.getLastLogIndex() {
+					// TODO
+					// r.Out("nextIndex vs lastLog %v, %v", nextIndex, r.getLastLogIndex())
+					entries := r.getLogEntries(nextIndex, r.getLastLogIndex())
+					reply, _ = r.AppendEntriesRPC(&n,
+						AppendEntriesRequest{r.GetCurrentTerm(), *r.GetLocalAddr(),
+							prevLogIndex, prevLogTerm, entries,
+							r.commitIndex})
+
+					if reply != nil && reply.Success {
+						r.nextIndex[n.Id] = r.getLastLogIndex() + 1
+						r.matchIndex[n.Id] = r.nextIndex[n.Id] - 1
+					}
+				}
+
+			} else {
+				r.nextIndex[n.Id]--
+			}
 		}
-		prevLogIndex := r.nextIndex[n.Id] - 1
-		//TODO: Que pasa si el next index esta mas arriba que el log del leader?
-		// Esta madre va a tronar.
-		// r.Out("nextIndex vs prevLog vs lastLog %v, %v, %v, %v", r.nextIndex[n.Id], prevLogIndex, r.getLastLogIndex(), r.logCache)
-		prevLogTerm := r.getLogEntry(prevLogIndex).TermId
-		reply, _ := r.AppendEntriesRPC(&n,
-			AppendEntriesRequest{r.GetCurrentTerm(), *r.GetLocalAddr(),
-				prevLogIndex, prevLogTerm, make([]LogEntry, 0),
-				r.commitIndex})
 
-		if reply == nil {
-			continue
+		// Updates commit index according to what the followers have in their logs already.
+		for N := r.getLastLogIndex(); N > r.commitIndex; N-- {
+			if r.hasMajority(N) && r.getLogTerm(N) == r.GetCurrentTerm() {
+				r.commitIndex = N
+			}
 		}
 
-		if r.GetCurrentTerm() < reply.Term {
-			r.setCurrentTerm(reply.Term)
-			return true, false
-		}
-
-		if reply.Success {
-			succ_nodes++
-			nextIndex := r.nextIndex[n.Id]
-			//Aqui segun you se vuelven iguales porque ya apendearon
-			r.matchIndex[n.Id] = r.nextIndex[n.Id] - 1
-			if (nextIndex - 1) != r.getLastLogIndex() {
-				// TODO
-				// r.Out("nextIndex vs lastLog %v, %v", nextIndex, r.getLastLogIndex())
-				entries := r.getLogEntries(nextIndex, r.getLastLogIndex())
-				reply, _ = r.AppendEntriesRPC(&n,
-					AppendEntriesRequest{r.GetCurrentTerm(), *r.GetLocalAddr(),
-						prevLogIndex, prevLogTerm, entries,
-						r.commitIndex})
-
-				if reply != nil && reply.Success {
-					r.nextIndex[n.Id] = r.getLastLogIndex() + 1
-					r.matchIndex[n.Id] = r.nextIndex[n.Id] - 1
+		// Calls process log from lastApplied until commit index.
+		if r.lastApplied != r.commitIndex {
+			i := r.lastApplied
+			if r.lastApplied != 0 {
+				i++
+			}
+			for ; i <= r.commitIndex; i++ {
+				reply := r.processLog(*r.getLogEntry(i))
+				if reply.Status == REQ_FAILED {
+					panic("This should not happen ever! PLZ FIX")
 				}
 			}
-
-		} else {
-			r.nextIndex[n.Id]--
+			r.lastApplied = r.commitIndex
 		}
-	}
 
-	// Updates commit index according to what the followers have in their logs already.
-	for N := r.getLastLogIndex(); N > r.commitIndex; N-- {
-		if r.hasMajority(N) && r.getLogTerm(N) == r.GetCurrentTerm() {
-			r.commitIndex = N
+		if succ_nodes > num_nodes/2 {
+			// return false, true
 		}
-	}
 
-	// Calls process log from lastApplied until commit index.
-	if r.lastApplied != r.commitIndex {
-		i := r.lastApplied
-		if r.lastApplied != 0 {
-			i++
-		}
-		for ; i <= r.commitIndex; i++ {
-			reply := r.processLog(*r.getLogEntry(i))
-			if reply.Status == REQ_FAILED {
-				panic("This should not happen ever! PLZ FIX")
-			}
-		}
-		r.lastApplied = r.commitIndex
-	}
-
-	if succ_nodes > num_nodes/2 {
-		return false, true
-	}
-
-	return false, false
+		// return false, false
+		finish <- true
+	}()
 }
 
 func (r *RaftNode) sendAppendEntries(entries []LogEntry) (fallBack, sentToMajority bool) {
@@ -657,7 +722,16 @@ func (r *RaftNode) sendAppendEntries(entries []LogEntry) (fallBack, sentToMajori
 				prevLogIndex, prevLogTerm, entries,
 				r.commitIndex})
 
-		if reply != nil {
+		if reply == nil {
+			continue
+		}
+
+		if r.GetCurrentTerm() < reply.Term {
+			r.setCurrentTerm(reply.Term)
+			return true, false
+		}
+
+		if reply.Success {
 			succ_nodes++
 			//We increase the next index for this node
 			//It's lastLogIndex + 1 porque en lastLogIndex es donde lo
@@ -667,11 +741,6 @@ func (r *RaftNode) sendAppendEntries(entries []LogEntry) (fallBack, sentToMajori
 			continue
 		}
 
-		if r.GetCurrentTerm() < reply.Term {
-			return true, false
-		} else if !reply.Success {
-			// TODO
-		}
 	}
 
 	if succ_nodes > num_nodes/2 {
