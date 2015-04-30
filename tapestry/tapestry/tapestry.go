@@ -106,6 +106,10 @@ func (tapestry *Tapestry) Kill() {
 	tapestry.server.listener.Close()
 }
 
+func (tapestry *Tapestry) GetLocalAddr() string {
+	return tapestry.local.node.Address
+}
+
 /*
 	Store a blob on the local node and publish the key to the tapestry
 */
