@@ -110,6 +110,10 @@ func (tapestry *Tapestry) GetLocalAddr() string {
 	return tapestry.local.node.Address
 }
 
+func (tapestry *Tapestry) GetLocalNode() Node {
+	return tapestry.local.node
+}
+
 /*
 	Store a blob on the local node and publish the key to the tapestry
 */
