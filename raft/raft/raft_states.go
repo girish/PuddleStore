@@ -102,10 +102,10 @@ func (r *RaftNode) doFollower() state {
 							i++
 						}
 						for ; i <= r.commitIndex; i++ {
-							reply := r.processLog(*r.getLogEntry(i))
-							if reply.Status == REQ_FAILED {
-								panic("This should not happen ever! PLZ FIX")
-							}
+							_ = r.processLog(*r.getLogEntry(i))
+							//if reply.Status == REQ_FAILED {
+							//	panic("This should not happen ever! PLZ FIX")
+							//}
 						}
 						r.lastApplied = r.commitIndex
 					}
@@ -311,39 +311,38 @@ func (r *RaftNode) doLeader() state {
 
 		case regClient := <-r.registerClient:
 			req := regClient.request
-			//rep := regClient.reply
+			rep := regClient.reply
 
 			entries := make([]LogEntry, 1)
 			entries[0] = LogEntry{r.getLastLogIndex() + 1, r.GetCurrentTerm(), CLIENT_REGISTRATION, []byte(req.FromNode.Id), ""}
 			//we add it to the log
 			r.appendLogEntry(entries[0])
 
-			/*
-				fallback, maj := r.sendAppendEntries(entries)
+			fallback, maj := r.sendAppendEntries(entries)
 
-				if fallback {
-					if maj {
-						rep <- RegisterClientReply{OK, r.getLastLogIndex(), *r.LeaderAddr}
-					} else {
-						rep <- RegisterClientReply{REQ_FAILED, 0, *r.LeaderAddr}
-					}
-					//not sure we need to do this
-					r.sendRequestFail()
-					r.LeaderAddr = nil
-					r.Out("reg client fallback by %v")
-					return r.doFollower
-				}
-
-				if !maj {
-					rep <- RegisterClientReply{REQ_FAILED, 0, *r.LeaderAddr}
-					//Truncate log, didnt happen
-					r.truncateLog(r.getLastLogIndex())
-				} else {
-					//r.processLog(entries[0])
-					//r.commitIndex++
-					//r.sendAppendEntries(make([]LogEntry, 0))
+			if fallback {
+				if maj {
 					rep <- RegisterClientReply{OK, r.getLastLogIndex(), *r.LeaderAddr}
-				}*/
+				} else {
+					rep <- RegisterClientReply{REQ_FAILED, 0, *r.LeaderAddr}
+				}
+				//not sure we need to do this
+				r.sendRequestFail()
+				r.LeaderAddr = nil
+				r.Out("reg client fallback by %v")
+				return r.doFollower
+			}
+
+			if !maj {
+				rep <- RegisterClientReply{REQ_FAILED, 0, *r.LeaderAddr}
+				//Truncate log, didnt happen
+				r.truncateLog(r.getLastLogIndex())
+			} else {
+				//r.processLog(entries[0])
+				//r.commitIndex++
+				//r.sendAppendEntries(make([]LogEntry, 0))
+				rep <- RegisterClientReply{OK, r.getLastLogIndex(), *r.LeaderAddr}
+			}
 
 		case clientReq := <-r.clientRequest:
 			req := clientReq.request
@@ -351,6 +350,8 @@ func (r *RaftNode) doLeader() state {
 			//TODO: Should we first check that it's registered?
 			entry := r.getLogEntry(req.ClientId)
 			if entry.Command == CLIENT_REGISTRATION { //&& string(entry.Data) == req. {
+
+				r.Out("We are handling the client registration")
 				entries := make([]LogEntry, 1)
 				//Fill in the LogEntry based on the request data
 				entries[0] = LogEntry{r.getLastLogIndex() + 1, r.GetCurrentTerm(), req.Command, req.Data, strconv.FormatUint(req.SequenceNum, 10)}
@@ -358,8 +359,9 @@ func (r *RaftNode) doLeader() state {
 
 				//we now send it to everyone
 				// fallback, maj := r.sendAppendEntries(entries)
-				r.requestMap[req.SequenceNum] = clientReq
-
+				r.requestMutex.Lock()
+				r.requestMap[r.getLastLogIndex()] = clientReq
+				r.requestMutex.Unlock()
 				/*
 					if fallback {
 						//Ahora no estoy tan seguro de hacer esto
@@ -380,7 +382,7 @@ func (r *RaftNode) doLeader() state {
 					// electionTimeout = makeElectionTimeout()
 				*/
 			} else {
-				rep <- ClientReply{REQ_FAILED, "", *r.LeaderAddr}
+				rep <- ClientReply{REQ_FAILED, "command is client registration", *r.LeaderAddr}
 			}
 
 		}
@@ -390,9 +392,11 @@ func (r *RaftNode) doLeader() state {
 }
 
 func (r *RaftNode) sendRequestFail() {
+	r.requestMutex.Lock()
 	for _, v := range r.requestMap {
 		v.reply <- ClientReply{REQ_FAILED, "", *r.LeaderAddr}
 	}
+	r.requestMutex.Unlock()
 }
 
 func (r *RaftNode) sendNoop() bool {
@@ -686,10 +690,10 @@ func (r *RaftNode) sendHeartBeats(fallback, finish chan bool) { //(fallBack, sen
 				i++
 			}
 			for ; i <= r.commitIndex; i++ {
-				reply := r.processLog(*r.getLogEntry(i))
-				if reply.Status == REQ_FAILED {
-					panic("This should not happen ever! PLZ FIX")
-				}
+				_ = r.processLog(*r.getLogEntry(i))
+				//if reply.Status == REQ_FAILED {
+				//	panic("This should not happen ever! PLZ FIX")
+				//}
 			}
 			r.lastApplied = r.commitIndex
 		}

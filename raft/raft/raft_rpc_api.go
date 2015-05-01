@@ -168,6 +168,10 @@ const (
 	CLIENT_REGISTRATION
 	INIT
 	NOOP
+	//Adding commands to interact with filesystem
+	CREATE_DIR
+	CREATE_FILE
+	GET
 )
 
 type ClientRequest struct {

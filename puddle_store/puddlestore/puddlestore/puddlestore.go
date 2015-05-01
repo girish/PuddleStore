@@ -7,7 +7,7 @@ import (
 	"net"
 	"net/rpc"
 	//"bufio"
-	// "fmt"
+	"fmt"
 	//"os"
 	//"strings"
 )
@@ -25,6 +25,8 @@ type Puddlestore struct {
 	rootV  uint32
 	paths  map[string]string
 
+	Id         string
+	Addr       string
 	Listener   net.Listener
 	listenPort int
 	RPCServer  *PuddleRPCServer
@@ -54,7 +56,10 @@ func Start() (p *Puddlestore) {
 	// -------------------------------------------------
 
 	// Run the Raft cluster ----------------------------
-	raft.CreateLocalCluster(raft.DefaultConfig())
+	puddlestore.rnodes, err = raft.CreateLocalCluster(raft.DefaultConfig())
+	if err != nil {
+		panic(err)
+	}
 	// -------------------------------------------------
 
 	// Create the root node ----------------------------
@@ -75,6 +80,7 @@ func Start() (p *Puddlestore) {
 	}
 	puddlestore.Listener = conn
 	puddlestore.listenPort = localPort
+	fmt.Printf("Started puddlestore, listening at %v\n", conn.Addr().String())
 
 	// Start RPC server
 	puddlestore.RPCServer = &PuddleRPCServer{p}
