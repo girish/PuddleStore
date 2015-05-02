@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"../../tapestry/tapestry"
 	"crypto/sha1"
 	"fmt"
 	"math/big"
@@ -13,6 +14,9 @@ import (
 
 /* Node's can be in three possible states */
 type NodeState int
+
+// Tapestry's id
+type ID tapestry.ID
 
 const (
 	FOLLOWER_STATE NodeState = iota
@@ -61,6 +65,9 @@ type RaftNode struct {
 	hash         []byte
 	requestMutex sync.Mutex
 	requestMap   map[uint64]ClientRequestMsg
+
+	/*The map that we need to keep the state of PuddleStore*/
+	fileMap map[ID]string
 }
 
 type NodeAddr struct {
@@ -90,6 +97,8 @@ func CreateNode(localPort int, remoteAddr *NodeAddr, config *Config) (rp *RaftNo
 	r.lastApplied = 0
 	r.nextIndex = make(map[string]uint64)
 	r.matchIndex = make(map[string]uint64)
+
+	r.fileMap = make(map[ID]string)
 
 	r.Testing = NewTesting()
 	r.Testing.PauseWorld(false)

@@ -1,8 +1,8 @@
 package puddlestore
 
 import (
-	"../../../raft/raft"
-	"../../../tapestry/tapestry"
+	"../../raft/raft"
+	"../../tapestry/tapestry"
 	"math/rand"
 	"net"
 	"net/rpc"

@@ -171,7 +171,12 @@ const (
 	//Adding commands to interact with filesystem
 	CREATE_DIR
 	CREATE_FILE
+	REMOVE_DIR
+	REMOVE_FILE
+	//Commands that modify the map that raft is in charge of
 	GET
+	SET
+	REMOVE
 )
 
 type ClientRequest struct {
