@@ -67,7 +67,8 @@ type RaftNode struct {
 	requestMap   map[uint64]ClientRequestMsg
 
 	/*The map that we need to keep the state of PuddleStore*/
-	fileMap map[ID]string
+	fileMap    map[ID]string
+	fileMapMtx sync.Mutex
 }
 
 type NodeAddr struct {

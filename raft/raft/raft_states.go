@@ -347,7 +347,7 @@ func (r *RaftNode) doLeader() state {
 		case clientReq := <-r.clientRequest:
 			req := clientReq.request
 			rep := clientReq.reply
-			//TODO: Should we first check that it's registered?
+			//checking that it's registered
 			entry := r.getLogEntry(req.ClientId)
 			if entry.Command == CLIENT_REGISTRATION { //&& string(entry.Data) == req. {
 

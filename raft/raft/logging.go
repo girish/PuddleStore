@@ -92,7 +92,7 @@ func (r *RaftNode) ShowState() {
 	fmt.Printf("Current commit index: %v\n", r.commitIndex)
 	fmt.Printf("Current next index: %v\n", r.nextIndex)
 	fmt.Printf("Current match index: %v\n", r.matchIndex)
-
+	fmt.Printf("Current fileMap: %v\n", r.fileMap)
 }
 
 func (r *RaftNode) PrintLogCache() {

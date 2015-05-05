@@ -41,9 +41,12 @@ func main() {
 	}
 
 	clientCommands := map[string]command{
-		"debug": command{toggleDebug, "debug <on|off>", "Turn debug on or off. On by default", 1},
-		"init":  command{clientInit, "init <value>", "Instruct the state machine to pick an initial value for hashing", 1},
-		"hash":  command{clientHash, "hash", "Instruct the state machine to perform another round of hashing", 0},
+		"debug":  command{toggleDebug, "debug <on|off>", "Turn debug on or off. On by default", 1},
+		"init":   command{clientInit, "init <value>", "Instruct the state machine to pick an initial value for hashing", 1},
+		"hash":   command{clientHash, "hash", "Instruct the state machine to perform another round of hashing", 0},
+		"set":    command{clientSet, "set <key> <value>", "Instruct the state machine to put that key and value into the file map", 2},
+		"get":    command{clientGet, "get <key>", "Instruct the state machine to retrieve the value associated with the given <key>", 1},
+		"remove": command{clientRemove, "remove <key>", "Instruct the state machine to remove the value associated with the given <key>", 1},
 	}
 
 	// Kick off CLI, await exit

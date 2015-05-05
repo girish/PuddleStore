@@ -169,14 +169,10 @@ const (
 	INIT
 	NOOP
 	//Adding commands to interact with filesystem
-	CREATE_DIR
-	CREATE_FILE
-	REMOVE_DIR
-	REMOVE_FILE
+	REMOVE //For deleting
 	//Commands that modify the map that raft is in charge of
-	GET
-	SET
-	REMOVE
+	GET //for querying
+	SET //for modifying files
 )
 
 type ClientRequest struct {
