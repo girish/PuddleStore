@@ -67,7 +67,7 @@ type RaftNode struct {
 	requestMap   map[uint64]ClientRequestMsg
 
 	/*The map that we need to keep the state of PuddleStore*/
-	fileMap    map[ID]string
+	fileMap    map[string]string
 	fileMapMtx sync.Mutex
 }
 
@@ -99,7 +99,7 @@ func CreateNode(localPort int, remoteAddr *NodeAddr, config *Config) (rp *RaftNo
 	r.nextIndex = make(map[string]uint64)
 	r.matchIndex = make(map[string]uint64)
 
-	r.fileMap = make(map[ID]string)
+	r.fileMap = make(map[string]string)
 
 	r.Testing = NewTesting()
 	r.Testing.PauseWorld(false)

@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"strconv"
 	"time"
+	"fmt"
 )
 
 type state func() state
@@ -393,8 +394,25 @@ func (r *RaftNode) doLeader() state {
 
 func (r *RaftNode) sendRequestFail() {
 	r.requestMutex.Lock()
-	for _, v := range r.requestMap {
-		v.reply <- ClientReply{REQ_FAILED, "", *r.LeaderAddr}
+	//We need to make sure that a leader does not hang in case
+	//the client is no longer available
+	for k, v := range r.requestMap {
+		r.Out("The leader address is: %v\n", r.LeaderAddr)
+		r.Out("The reply is: %v\n", v.reply)
+		var leader NodeAddr
+		if r.LeaderAddr != nil {
+			leader = *r.LeaderAddr
+		} else {
+			leader = NodeAddr{"",""}
+		}
+		select{
+			case v.reply <- ClientReply{REQ_FAILED, "", leader}:
+				//If we handle it we no longer need it
+				delete(r.requestMap, k)
+				fmt.Println("Message successfully sent!")
+			default:
+				fmt.Println("Client no longer available")
+			}
 	}
 	r.requestMutex.Unlock()
 }
@@ -633,6 +651,7 @@ func (r *RaftNode) sendHeartBeats(fallback, finish chan bool) { //(fallBack, sen
 			//TODO: Que pasa si el next index esta mas arriba que el log del leader?
 			// Esta madre va a tronar.
 			//r.Out("nextIndex vs prevLog vs lastLog %v, %v, %v, %v", r.nextIndex[n.Id], prevLogIndex, r.getLastLogIndex(), r.logCache)
+			r.Out("El log que nos piden es: %v, y el log que tenemos es %v", prevLogIndex, r.getLastLogIndex())
 			prevLogTerm := r.getLogEntry(prevLogIndex).TermId
 			//r.Out("HeartBeat to %v", n.Id)
 			reply, _ := r.AppendEntriesRPC(&n,
