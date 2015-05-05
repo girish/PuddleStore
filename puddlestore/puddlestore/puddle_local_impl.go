@@ -5,6 +5,7 @@ import (
 	"../../tapestry/tapestry"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 func (puddle *PuddleNode) connect(req *ConnectRequest) (*ConnectReply, error) {
@@ -71,12 +72,16 @@ func (puddle *PuddleNode) cd(req *cdRequest) (*cdReply, error) {
 
 	path := req.path
 
+	if len(path) == 0 {
+		return nil, fmt.Errorf("Empty path")
+	}
+
 	// TODO: Support relative paths.
 	if path[0] != '/' {
 		panic("not valid path")
 	}
 
-	inode, err := puddle.getInode(path)
+	_, err := puddle.getInode(path)
 
 	if err != nil { // Path does not exist.
 		return &cdReply{false}, err
@@ -84,6 +89,55 @@ func (puddle *PuddleNode) cd(req *cdRequest) (*cdReply, error) {
 
 	// Changes the current path of the client
 	puddle.clientPaths[req.FromNode.Addr] = path
+
+	reply.Ok = true
+	return &reply, nil
+}
+
+func (puddle *PuddleNode) mkdir(req *mkdirRequest) (*mkdirReply, error) {
+	reply := mkdirReply{}
+
+	path := req.path
+	addr := req.FromNode.Addr
+
+	if len(path) == 0 {
+		return nil, fmt.Errorf("Empty path")
+	}
+
+	dirInode, name, fullpath, dirpath, err := puddle.dir_namev(path, addr)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	dirBlock, err := puddle.getInodeBlock(dirInode)
+	dirBlockPath := fmt.Sprintf("%v:%v", dirpath, "indirect")
+
+	newDirInode := CreateDirInode(name)
+
+	newDirBlock := CreateBlock()
+
+	blockPath := fmt.Sprintf("%v:%v", fullpath, "indirect")
+	dotPath := fullpath
+	dotdotPath := dirpath
+
+	newDirInodeHash := tapestry.Hash(blockPath)
+	dotHash := tapestry.Hash(dotPath)
+	dotdotHash := tapestry.Hash(dotdotPath)
+
+	IdIntoByte(newDirBlock.bytes, &dotHash, 0)
+	IdIntoByte(newDirBlock.bytes, &dotdotHash, tapestry.DIGITS)
+
+	IdIntoByte(dirBlock, &newDirInodeHash, int(dirInode.size))
+	dirInode.size += tapestry.DIGITS
+
+	tapestry.TapestryStore(puddle.getRandomTapestryNode(), blockPath, newDirBlock.bytes)
+	tapestry.TapestryStore(puddle.getRandomTapestryNode(), dirBlockPath, newDirBlock.bytes)
+
+	encodedDirNode, err := dirInode.GobEncode()
+	encodedNewDirNode, err := newDirInode.GobEncode()
+
+	tapestry.TapestryStore(puddle.getRandomTapestryNode(), dirpath, encodedDirNode)
+	tapestry.TapestryStore(puddle.getRandomTapestryNode(), fullpath, encodedNewDirNode)
 
 	reply.Ok = true
 	return &reply, nil
@@ -150,4 +204,102 @@ func (puddle *PuddleNode) getBlockInodes(path string, data []byte) ([]*Inode, er
 
 	}
 	return files, nil
+}
+
+// Tribute to Weenix's version of dir_namev in kernel/fs/namev.c
+func (puddle *PuddleNode) dir_namev(pathname string, addr string) (*Inode, string, string, string, error) {
+
+	path := removeExcessSlashes(pathname)
+	lastSlash := strings.LastIndex(path, "/")
+	var dirPath, name string
+
+	if lastSlash != -1 && len(path) != 1 { // K. all good
+		dirPath = path[:lastSlash]
+		name = path[lastSlash+1:]
+	} else if lastSlash == -1 { // No slashes at all (relative path probably)
+		dirPath = puddle.getCurrentDir(addr)
+		name = path
+	} else { // This is root
+		return puddle.rootInode, "", "/", "", nil
+	}
+
+	if dirPath[0] != '/' {
+		dirPath = puddle.getCurrentDir(addr) + "/" + dirPath
+	}
+
+	dirInode, err := puddle.getInode(dirPath)
+	if err != nil { // Dir path does not exist
+		fmt.Println(err)
+		return nil, "", "", "", err
+	}
+
+	return dirInode, name, dirPath + "/" + name, dirPath, nil
+}
+
+func removeExcessSlashes(path string) string {
+	var firstNonSlash, lastNonSlash, start int
+
+	onlySlashes := true
+	str := path
+
+	length := len(path)
+
+	// Nothing to do
+	if path[0] != '/' && path[length-1] != '/' {
+		return str
+	}
+
+	// Get the first non slash
+	for i := 0; i < length; i++ {
+		if str[i] != '/' {
+			onlySlashes = false
+			firstNonSlash = i
+			break
+		}
+	}
+
+	// Get the last non slash
+	for i := length - 1; i >= 0; i-- {
+		if str[i] != '/' {
+			lastNonSlash = i
+			break
+		}
+	}
+
+	// Guaranteed to be the root path
+	if onlySlashes {
+		str = "/"
+		return str
+	} else {
+		length = lastNonSlash - firstNonSlash + 1
+		if str[0] == '/' {
+			start = firstNonSlash - 1
+			length++
+		} else {
+			start = 0
+		}
+
+		str = path[start : start+length]
+	}
+
+	length = len(str)
+	for i := 0; i < length; i++ {
+		if i+1 == length {
+			break
+		}
+
+		if str[i] == '/' && str[i+1] == '/' {
+			str = str[:i] + str[i+1:]
+			length -= 1
+			i -= 1
+		}
+	}
+
+	return str
+}
+
+func IdIntoByte(bytes []byte, id *tapestry.ID, start int) {
+	for i := 0; i < tapestry.DIGITS; i++ {
+		bytes[start+i] = byte(id[i])
+	}
 }

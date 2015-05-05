@@ -58,10 +58,31 @@ type cdReply struct {
 	Ok bool
 }
 
-func cdRPC(remotenode *PuddleAddr, request lsRequest) (*cdReply, error) {
+func cdRPC(remotenode *PuddleAddr, request cdRequest) (*cdReply, error) {
 	var reply cdReply
 
 	err := makeRemoteCall(remotenode, "cdImpl", request, &reply)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	return &reply, nil
+}
+
+type mkdirRequest struct {
+	path     string
+	FromNode PuddleAddr
+}
+
+type mkdirReply struct {
+	Ok bool
+}
+
+func mkdirRPC(remotenode *PuddleAddr, request mkdirRequest) (*mkdirReply, error) {
+	var reply mkdirReply
+
+	err := makeRemoteCall(remotenode, "mkdirImpl", request, &reply)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err

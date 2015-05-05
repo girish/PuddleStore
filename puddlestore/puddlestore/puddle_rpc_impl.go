@@ -52,3 +52,8 @@ func (server *PuddleRPCServer) cdImpl(req *cdRequest, rep *cdReply) error {
 	rep, err := server.node.cd(req)
 	return err
 }
+
+func (server *PuddleRPCServer) mkdirImpl(req *mkdirRequest, rep *mkdirReply) error {
+	rep, err := server.node.mkdir(req)
+	return err
+}

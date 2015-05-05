@@ -1,6 +1,7 @@
 package puddlestore
 
 import (
+	"../../tapestry/tapestry"
 	"bytes"
 	"encoding/gob"
 )
@@ -12,6 +13,7 @@ const (
 	FILE
 )
 
+const BLOCK_SIZE = 4096
 const FILES_PER_INODE = 4
 
 type Inode struct {
@@ -21,6 +23,10 @@ type Inode struct {
 	indirect guid
 }
 
+type Block struct {
+	bytes []byte
+}
+
 func CreateRootInode() *Inode {
 	inode := new(Inode)
 	inode.name = "root"
@@ -28,6 +34,21 @@ func CreateRootInode() *Inode {
 	inode.size = 0
 	inode.indirect = ""
 	return inode
+}
+
+func CreateDirInode(name string) *Inode {
+	inode := new(Inode)
+	inode.name = name
+	inode.filetype = DIR
+	inode.size = tapestry.DIGITS * 2 // for '.' and '..'
+	inode.indirect = ""
+	return inode
+}
+
+func CreateBlock() *Block {
+	block := new(Block)
+	block.bytes = make([]byte, BLOCK_SIZE)
+	return block
 }
 
 func (d *Inode) GobEncode() ([]byte, error) {

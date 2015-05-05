@@ -28,15 +28,15 @@ func SetDebug(enabled bool) {
 }
 
 func (r *PuddleNode) Out(formatString string, args ...interface{}) {
-	Out.Output(2, fmt.Sprintf("(%v) %v", r.Id, fmt.Sprintf(formatString, args...)))
+	Out.Output(2, fmt.Sprintf("%v", fmt.Sprintf(formatString, args...)))
 }
 
 func (r *PuddleNode) Debug(formatString string, args ...interface{}) {
-	Debug.Output(2, fmt.Sprintf("(%v) %v", r.Id, fmt.Sprintf(formatString, args...)))
+	Debug.Output(2, fmt.Sprintf("%v", fmt.Sprintf(formatString, args...)))
 }
 
 func (r *PuddleNode) Error(formatString string, args ...interface{}) {
-	Error.Output(2, fmt.Sprintf("(%v) %v", r.Id, fmt.Sprintf(formatString, args...)))
+	Error.Output(2, fmt.Sprintf("%v", fmt.Sprintf(formatString, args...)))
 }
 
 /*

@@ -25,6 +25,8 @@ type PuddleNode struct {
 	clientPaths map[string]string       // client addr -> curpath
 	clients     map[string]*raft.Client // client addr -> client
 
+	rootInode *Inode
+
 	server *PuddleRPCServer
 }
 
@@ -77,6 +79,8 @@ func Start() (p *PuddleNode, err error) {
 	if err != nil {
 		panic(err)
 	}
+
+	puddle.rootInode = root
 	// -------------------------------------------------
 
 	// RPC server --------------------------------------
@@ -96,6 +100,14 @@ func (puddle *PuddleNode) getRandomTapestryNode() tapestry.Node {
 func (puddle *PuddleNode) getRandomRaftNode() *raft.RaftNode {
 	index := rand.Int() % RAFT_NODES
 	return puddle.rnodes[index]
+}
+
+func (puddle *PuddleNode) getCurrentDir(addr string) string {
+	curdir, ok := puddle.clientPaths[addr]
+	if !ok {
+		panic("Did not found the current path of a client that is supposed to be registered")
+	}
+	return curdir
 }
 
 func randSeq(n int) string {
