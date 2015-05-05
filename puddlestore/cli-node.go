@@ -1,7 +1,7 @@
 package main
 
 import (
-	"./raft"
+	"./puddlestore"
 	"fmt"
 )
 
@@ -10,10 +10,11 @@ func toggleDebug(shell *Shell, args []string) error {
 	if err != nil {
 		fmt.Printf("%v\n", err)
 	}
-	raft.SetDebug(state)
+	puddlestore.SetDebug(state)
 	return nil
 }
 
+/*
 func showState(shell *Shell, args []string) error {
 	shell.r.ShowState()
 	return nil
@@ -59,4 +60,4 @@ func findNode(nodes []raft.NodeAddr, id string) *raft.NodeAddr {
 		}
 	}
 	return nil
-}
+}*/

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"./raft"
+	"./puddlestore"
 	"bufio"
 	"fmt"
 	"io"
@@ -10,8 +10,8 @@ import (
 )
 
 type Shell struct {
-	r    *raft.RaftNode
-	c    *raft.Client
+	r    *puddlestore.PuddleNode
+	c    *puddlestore.Client
 	done chan bool
 }
 

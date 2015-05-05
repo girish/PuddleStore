@@ -52,6 +52,12 @@ func newTapestryNode(node Node, tapestry *Tapestry) *TapestryNode {
 	return n
 }
 
+//func (local *TapestryNode) Store(key string, val []byte) (err error) {
+//	fmt.Printf("LOCAL Received remote invocation of Tapestry.Store\n")
+//
+//	return nil
+//}
+
 /*
    Invoked when starting the local node, if we are connecting to an existing Tapestry.
 

@@ -5,7 +5,7 @@ import (
 	"../../tapestry/tapestry"
 	"math/rand"
 	"net"
-	"net/rpc"
+	// "net/rpc"
 	//"bufio"
 	"fmt"
 	//"os"
@@ -19,12 +19,13 @@ type vguid string
 type aguid string
 type guid string
 
-type Puddlestore struct {
+type PuddleNode struct {
 	tnodes []*tapestry.Tapestry
 	rnodes []*raft.RaftNode
 	rootV  uint32
 	paths  map[string]string
 
+	server     *PuddleRPCServer
 	Id         string
 	Addr       string
 	Listener   net.Listener
@@ -33,59 +34,75 @@ type Puddlestore struct {
 	IsShutdown bool
 }
 
+type PuddleAddr struct {
+	Addr string
+}
+
 func CreatePuddleStore() {
 }
 
-func Start() (p *Puddlestore) {
-	var puddlestore Puddlestore
-	p = &puddlestore
+func Start() (p *PuddleNode, err error) {
+	var puddle PuddleNode
+	p = &puddle
+	puddle.tnodes = make([]*tapestry.Tapestry, TAPESTRY_NODES)
+	puddle.rnodes = make([]*raft.RaftNode, RAFT_NODES)
 
 	// Start runnning the tapestry nodes. --------------
 	t, err := tapestry.Start(0, "")
 	if err != nil {
 		panic(err)
 	}
-	puddlestore.tnodes[0] = t
+
+	puddle.tnodes[0] = t
 	for i := 1; i < TAPESTRY_NODES; i++ {
-		t, err = tapestry.Start(0, puddlestore.tnodes[0].GetLocalAddr())
+		t, err = tapestry.Start(0, puddle.tnodes[0].GetLocalAddr())
 		if err != nil {
 			panic(err)
 		}
-		puddlestore.tnodes[i] = t
+		puddle.tnodes[i] = t
 	}
 	// -------------------------------------------------
 
 	// Run the Raft cluster ----------------------------
-	puddlestore.rnodes, err = raft.CreateLocalCluster(raft.DefaultConfig())
+	puddle.rnodes, err = raft.CreateLocalCluster(raft.DefaultConfig())
 	if err != nil {
 		panic(err)
 	}
 	// -------------------------------------------------
 
 	// Create the root node ----------------------------
-	vguid := randSeq(5)
+	// vguid := randSeq(5)
 	root := CreateRootInode()
-	puddlestore.paths["/"] = vguid
+	// puddlestore.paths["/"] = vguid
 	encodedRoot, err := root.GobEncode()
 	if err != nil {
 		panic(err)
 	}
-	tapestry.TapestryStore(puddlestore.tnodes[0].GetLocalNode(),
-		vguid, encodedRoot)
-	// -------------------------------------------------
-
-	conn, localPort, err := OpenListener()
+	err = tapestry.TapestryStore(puddle.tnodes[0].GetLocalNode(),
+		"/", encodedRoot)
 	if err != nil {
 		panic(err)
 	}
-	puddlestore.Listener = conn
-	puddlestore.listenPort = localPort
-	fmt.Printf("Started puddlestore, listening at %v\n", conn.Addr().String())
+
+	// -------------------------------------------------
+
+	puddle.server = newPuddlestoreRPCServer(p)
+
+	/*
+		conn, localPort, err := OpenListener()
+		if err != nil {
+			panic(err)
+		}
+		puddle.Listener = conn
+		puddle.listenPort = localPort*/
+	fmt.Printf("Started puddlestore, listening at %v\n", puddle.server.listener.Addr().String())
 
 	// Start RPC server
-	puddlestore.RPCServer = &PuddleRPCServer{p}
-	rpc.RegisterName(conn.Addr().String(), puddlestore.RPCServer)
-	go puddlestore.RPCServer.startRpcServer()
+	//puddle.RPCServer = &PuddleRPCServer{p}
+	//rpc.RegisterName(conn.Addr().String(), puddle.RPCServer)
+	//go puddle.RPCServer.startRpcServer()
+
+	// go puddle.run()
 
 	return
 }
@@ -97,4 +114,9 @@ func randSeq(n int) string {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(b)
+}
+
+func (p *PuddleNode) run() {
+	for {
+	}
 }
