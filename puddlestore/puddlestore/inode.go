@@ -12,11 +12,13 @@ const (
 	FILE
 )
 
+const FILES_PER_INODE = 4
+
 type Inode struct {
 	name     string
 	filetype Filetype
 	size     uint32
-	indirect vguid
+	indirect guid
 }
 
 func CreateRootInode() *Inode {

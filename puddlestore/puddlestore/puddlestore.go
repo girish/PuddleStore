@@ -83,28 +83,20 @@ func Start() (p *PuddleNode, err error) {
 	if err != nil {
 		panic(err)
 	}
-
 	// -------------------------------------------------
 
+	// RPC server --------------------------------------
 	puddle.server = newPuddlestoreRPCServer(p)
 
-	/*
-		conn, localPort, err := OpenListener()
-		if err != nil {
-			panic(err)
-		}
-		puddle.Listener = conn
-		puddle.listenPort = localPort*/
 	fmt.Printf("Started puddlestore, listening at %v\n", puddle.server.listener.Addr().String())
-
-	// Start RPC server
-	//puddle.RPCServer = &PuddleRPCServer{p}
-	//rpc.RegisterName(conn.Addr().String(), puddle.RPCServer)
-	//go puddle.RPCServer.startRpcServer()
-
-	// go puddle.run()
+	// -------------------------------------------------
 
 	return
+}
+
+func (puddle *PuddleNode) getRandomTapestryNode() tapestry.Node {
+	index := rand.Int() % TAPESTRY_NODES
+	return puddle.tnodes[index].GetLocalNode()
 }
 
 func randSeq(n int) string {

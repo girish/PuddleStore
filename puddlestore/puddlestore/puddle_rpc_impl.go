@@ -61,8 +61,19 @@ func (server *PuddleRPCServer) startRpcServer() {
 
 func (server *PuddleRPCServer) ConnectImpl(req *ConnectRequest, rep *ConnectReply) error {
 
-	fmt.Println("(Puddlestore) RPC Connect impl WE DID IT")
 	err := server.node.Connect(req)
+
+	return err
+}
+
+func (server *PuddleRPCServer) lsImpl(req *lsRequest, rep *lsReply) error {
+	rep, err := server.node.ls(req)
+	return err
+}
+
+func (server *PuddleRPCServer) cdImpl(req *cdRequest, rep *cdReply) error {
+
+	err := server.node.cd(req)
 
 	return err
 }

@@ -28,6 +28,49 @@ func ConnectRPC(remotenode *PuddleAddr, request ConnectRequest) (*ConnectReply, 
 	return &reply, nil
 }
 
+type lsRequest struct {
+	curdir   string
+	FromNode PuddleAddr
+}
+
+type lsReply struct {
+	elements []string
+	Ok       bool
+}
+
+func lsRPC(remotenode *PuddleAddr, request lsRequest) (*lsReply, error) {
+	var reply lsReply
+
+	err := makeRemoteCall(remotenode, "lsImpl", request, &reply)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	return &reply, nil
+}
+
+type cdRequest struct {
+	curdir   string
+	FromNode PuddleAddr
+}
+
+type cdReply struct {
+	Ok bool
+}
+
+func cdRPC(remotenode *PuddleAddr, request lsRequest) (*cdReply, error) {
+	var reply cdReply
+
+	err := makeRemoteCall(remotenode, "cdImpl", request, &reply)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	return &reply, nil
+}
+
 /* Helper function to make a call to a remote node */
 func makeRemoteCall(remoteNode *PuddleAddr, method string, req interface{}, rsp interface{}) error {
 	// Dial the server if we don't already have a connection to it
@@ -44,7 +87,6 @@ func makeRemoteCall(remoteNode *PuddleAddr, method string, req interface{}, rsp 
 
 	// Make the request
 	uniqueMethodName := fmt.Sprintf("%v.%v", remoteNodeAddrStr, method)
-	fmt.Println(uniqueMethodName)
 	err = client.Call(uniqueMethodName, req, rsp)
 	if err != nil {
 		client.Close()
