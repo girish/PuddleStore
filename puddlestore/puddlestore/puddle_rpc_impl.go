@@ -38,31 +38,8 @@ func newPuddlestoreRPCServer(puddle *PuddleNode) (server *PuddleRPCServer) {
 	return
 }
 
-func (server *PuddleRPCServer) startRpcServer() {
-	for {
-		if server.node.IsShutdown {
-			fmt.Printf("(%v) Shutting down RPC server\n")
-			return
-		}
-		conn, err := server.node.Listener.Accept()
-		if err != nil {
-			if !server.node.IsShutdown {
-				fmt.Printf("(%v) Raft RPC server accept error: %v\n", err)
-			}
-			continue
-		}
-		if !server.node.IsShutdown {
-			go rpc.ServeConn(conn)
-		} else {
-			conn.Close()
-		}
-	}
-}
-
 func (server *PuddleRPCServer) ConnectImpl(req *ConnectRequest, rep *ConnectReply) error {
-
-	err := server.node.Connect(req)
-
+	rep, err := server.node.connect(req)
 	return err
 }
 
@@ -72,8 +49,6 @@ func (server *PuddleRPCServer) lsImpl(req *lsRequest, rep *lsReply) error {
 }
 
 func (server *PuddleRPCServer) cdImpl(req *cdRequest, rep *cdReply) error {
-
-	err := server.node.cd(req)
-
+	rep, err := server.node.cd(req)
 	return err
 }

@@ -4,7 +4,6 @@ import (
 	"../../raft/raft"
 	"../../tapestry/tapestry"
 	"math/rand"
-	"net"
 	// "net/rpc"
 	//"bufio"
 	"fmt"
@@ -20,18 +19,13 @@ type aguid string
 type guid string
 
 type PuddleNode struct {
-	tnodes []*tapestry.Tapestry
-	rnodes []*raft.RaftNode
-	rootV  uint32
-	paths  map[string]string
+	tnodes      []*tapestry.Tapestry
+	rnodes      []*raft.RaftNode
+	rootV       uint32
+	clientPaths map[string]string       // client addr -> curpath
+	clients     map[string]*raft.Client // client addr -> client
 
-	server     *PuddleRPCServer
-	Id         string
-	Addr       string
-	Listener   net.Listener
-	listenPort int
-	RPCServer  *PuddleRPCServer
-	IsShutdown bool
+	server *PuddleRPCServer
 }
 
 type PuddleAddr struct {
@@ -97,6 +91,11 @@ func Start() (p *PuddleNode, err error) {
 func (puddle *PuddleNode) getRandomTapestryNode() tapestry.Node {
 	index := rand.Int() % TAPESTRY_NODES
 	return puddle.tnodes[index].GetLocalNode()
+}
+
+func (puddle *PuddleNode) getRandomRaftNode() *raft.RaftNode {
+	index := rand.Int() % RAFT_NODES
+	return puddle.rnodes[index]
 }
 
 func randSeq(n int) string {

@@ -1,28 +1,40 @@
 package puddlestore
 
 import (
+	"../../raft/raft"
 	"../../tapestry/tapestry"
 	"fmt"
 	"strconv"
 )
 
-func (puddle *PuddleNode) Connect(req *ConnectRequest) error {
-	fmt.Println("me caga este pedo")
+func (puddle *PuddleNode) connect(req *ConnectRequest) (*ConnectReply, error) {
+	reply := ConnectReply{}
+	addr := req.FromNode.Addr
+	raftNode := puddle.getRandomRaftNode()
+	fromAddr := raft.NodeAddr{raft.AddrToId(addr, raftNode.GetConfig().NodeIdSize), addr}
 
-	return nil
+	client, err := raft.CreateClient(fromAddr)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	// Clients that just started the connection should start in root node.
+	puddle.clientPaths[addr] = "/"
+	puddle.clients[addr] = client
+
+	reply.Ok = true
+	return &reply, nil
 }
 
 func (puddle *PuddleNode) ls(req *lsRequest) (*lsReply, error) {
-	fmt.Println("me caga este pedo")
-
 	reply := lsReply{}
 	elements := make([]string, FILES_PER_INODE)
 	numElements := 0
-	curdir := req.curdir
 
-	// TODO: Support relative paths.
-	if curdir[0] != '/' {
-		panic("not valid path")
+	curdir, ok := puddle.clientPaths[req.FromNode.Addr]
+	if !ok {
+		panic("Did not found the current path of a client that is supposed to be registered")
 	}
 
 	// First, get the current directory inode
@@ -54,10 +66,27 @@ func (puddle *PuddleNode) ls(req *lsRequest) (*lsReply, error) {
 	return &reply, nil
 }
 
-func (puddle *PuddleNode) cd(req *cdRequest) error {
-	fmt.Println("me caga este pedo")
+func (puddle *PuddleNode) cd(req *cdRequest) (*cdReply, error) {
+	reply := cdReply{}
 
-	return nil
+	path := req.path
+
+	// TODO: Support relative paths.
+	if path[0] != '/' {
+		panic("not valid path")
+	}
+
+	inode, err := puddle.getInode(path)
+
+	if err != nil { // Path does not exist.
+		return &cdReply{false}, err
+	}
+
+	// Changes the current path of the client
+	puddle.clientPaths[req.FromNode.Addr] = path
+
+	reply.Ok = true
+	return &reply, nil
 }
 
 // Gets an inode from a given path

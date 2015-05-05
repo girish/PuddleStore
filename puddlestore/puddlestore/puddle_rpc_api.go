@@ -29,7 +29,6 @@ func ConnectRPC(remotenode *PuddleAddr, request ConnectRequest) (*ConnectReply, 
 }
 
 type lsRequest struct {
-	curdir   string
 	FromNode PuddleAddr
 }
 
@@ -51,7 +50,7 @@ func lsRPC(remotenode *PuddleAddr, request lsRequest) (*lsReply, error) {
 }
 
 type cdRequest struct {
-	curdir   string
+	path     string
 	FromNode PuddleAddr
 }
 
