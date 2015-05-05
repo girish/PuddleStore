@@ -1,7 +1,7 @@
 package tapestry
 
 import (
-	"../../raft/"
+	// "../../raft/"
 	"fmt"
 	"net"
 	"os"

@@ -6,7 +6,7 @@ import (
 
 // Invoke tapestry.Store on a remote tapestry node
 func TapestryStore(remote Node, key string, value []byte) error {
-	Debug.Printf("Making remote TapestryStore call\n")
+	fmt.Printf("Making remote TapestryStore call\n")
 	return makeRemoteNodeCall(remote, "TapestryStore", StoreRequest{remote, key, value}, &StoreResponse{})
 }
 
@@ -80,7 +80,7 @@ type RemoveResponse struct {
 
 // Server: extension method to open up Store via RPC
 func (server *TapestryRPCServer) TapestryStore(req StoreRequest, rsp *StoreResponse) (err error) {
-	Debug.Printf("Received remote invocation of Tapestry.Store\n")
+	fmt.Printf("Received remote invocation of Tapestry.Store\n")
 	return server.tapestry.Store(req.Key, req.Value)
 }
 

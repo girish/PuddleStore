@@ -2,28 +2,58 @@ package puddlestore
 
 import (
 	"fmt"
+	"net"
 	"net/rpc"
 )
 
 type PuddleRPCServer struct {
-	node *Puddlestore
+	node     *PuddleNode
+	listener net.Listener
+	rpc      *rpc.Server
 }
 
-func (server *PuddleRPCServer) startRpcServer() {
-	if server.node.IsShutdown {
-		fmt.Printf("(%v) Shutting down RPC server\n")
-		return
-	}
-	conn, err := server.node.Listener.Accept()
+func newPuddlestoreRPCServer(puddle *PuddleNode) (server *PuddleRPCServer) {
+	server = new(PuddleRPCServer)
+	server.node = puddle
+	server.rpc = rpc.NewServer()
+	listener, _, err := OpenListener()
+	server.rpc.RegisterName(listener.Addr().String(), server)
+	server.listener = listener
+
 	if err != nil {
-		if !server.node.IsShutdown {
-			fmt.Printf("(%v) Raft RPC server accept error: %v\n", err)
+		panic("AA")
+	}
+
+	go func() {
+		for {
+			conn, err := server.listener.Accept()
+			if err != nil {
+				fmt.Printf("(%v) Raft RPC server accept error: %v\n", err)
+				continue
+			}
+			go server.rpc.ServeConn(conn)
 		}
-		continue
-	}
-	if !server.node.IsShutdown {
-		go rpc.ServeConn(conn)
-	} else {
-		conn.Close()
-	}
+	}()
+
+	return
+}
+
+func (server *PuddleRPCServer) ConnectImpl(req *ConnectRequest, rep *ConnectReply) error {
+	rep, err := server.node.connect(req)
+	return err
+}
+
+func (server *PuddleRPCServer) lsImpl(req *lsRequest, rep *lsReply) error {
+	rep, err := server.node.ls(req)
+	return err
+}
+
+func (server *PuddleRPCServer) cdImpl(req *cdRequest, rep *cdReply) error {
+	rep, err := server.node.cd(req)
+	return err
+}
+
+func (server *PuddleRPCServer) mkdirImpl(req *mkdirRequest, rep *mkdirReply) error {
+	rep, err := server.node.mkdir(req)
+	return err
 }

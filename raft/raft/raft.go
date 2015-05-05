@@ -261,6 +261,10 @@ func (r *RaftNode) GracefulExit() {
 	r.gracefulExit <- true
 }
 
+func (r *RaftNode) GetConfig() *Config {
+	return r.config
+}
+
 func (r *RaftNode) run() {
 	curr := r.doFollower
 	for curr != nil {

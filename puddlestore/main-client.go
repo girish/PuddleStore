@@ -3,7 +3,7 @@
 package main
 
 import (
-	"./raft"
+	"./puddlestore"
 	"flag"
 	"fmt"
 )
@@ -21,19 +21,19 @@ func main() {
 
 	flag.Parse()
 
-	raft.SetDebug(debug)
+	puddlestore.SetDebug(debug)
 
-	config := raft.DefaultConfig()
+	// config := raft.DefaultConfig()
 
-	var remoteAddr raft.NodeAddr
+	var remoteAddr puddlestore.PuddleAddr
 	if addr == "" {
 		fmt.Printf("You must specify an address for the client to connect to!\n")
 		return
 	} else {
-		remoteAddr = raft.NodeAddr{raft.AddrToId(addr, config.NodeIdSize), addr}
+		remoteAddr = puddlestore.PuddleAddr{addr}
 	}
 
-	c, err := raft.CreateClient(remoteAddr)
+	c, err := puddlestore.CreateClient(remoteAddr)
 
 	if err != nil {
 		fmt.Printf("Error starting client: %v\n", err)
@@ -41,9 +41,7 @@ func main() {
 	}
 
 	clientCommands := map[string]command{
-		"debug": command{toggleDebug, "debug <on|off>", "Turn debug on or off. On by default", 1},
-		"init":  command{clientInit, "init <value>", "Instruct the state machine to pick an initial value for hashing", 1},
-		"hash":  command{clientHash, "hash", "Instruct the state machine to perform another round of hashing", 0},
+	// "debug": command{toggleDebug, "debug <on|off>", "Turn debug on or off. On by default", 1},
 	}
 
 	// Kick off CLI, await exit
