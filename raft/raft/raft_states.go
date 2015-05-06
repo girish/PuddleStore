@@ -131,6 +131,16 @@ func (r *RaftNode) doFollower() state {
 				case register := <-r.registerClient:
 					return nil
 			*/
+		case clientReq := <-r.clientRequest:
+			//req := clientReq.request
+			rep := clientReq.reply
+			// req := regClient.request
+			if r.LeaderAddr != nil {
+				rep <- ClientReply{NOT_LEADER, "Not leader", *r.LeaderAddr}
+			} else {
+				// Return election in progress.
+				rep <- ClientReply{NOT_LEADER, "Not leader", NodeAddr{"", ""}}
+			}
 		}
 	}
 }
@@ -162,7 +172,8 @@ func (r *RaftNode) doCandidate() state {
 			if election {
 				return r.doLeader
 			} else {
-				return r.doFollower
+				//It waits for the next election timeout
+				break
 			}
 
 		case vote := <-r.requestVote:
@@ -215,9 +226,14 @@ func (r *RaftNode) doCandidate() state {
 			// req := regClient.request
 			rep := regClient.reply
 			rep <- RegisterClientReply{ELECTION_IN_PROGRESS, 0, NodeAddr{"", ""}}
+		case clientReq := <-r.clientRequest:
+			//req := clientReq.request
+			rep := clientReq.reply
+			rep <- ClientReply{ELECTION_IN_PROGRESS, "Not leader", NodeAddr{"", ""}}
 
 		case <-electionTimeout:
-			return r.doFollower
+			//It becomes a candidate again after the timeout.
+			return r.doCandidate
 		}
 	}
 	return nil
@@ -252,6 +268,7 @@ func (r *RaftNode) doLeader() state {
 			if shutdown {
 				return nil
 			}
+			//TODO: Is it bc this one has to move down?
 		case <-beats:
 			select {
 			case <-finish:
