@@ -22,8 +22,8 @@ type PuddleNode struct {
 	tnodes      []*tapestry.Tapestry
 	rnodes      []*raft.RaftNode
 	rootV       uint32
-	clientPaths map[string]string       // client addr -> curpath
-	clients     map[string]*raft.Client // client addr -> client
+	clientPaths map[uint64]string       // client id -> curpath
+	clients     map[uint64]*raft.Client // client id -> client
 
 	rootInode *Inode
 	Local     PuddleAddr
@@ -43,8 +43,8 @@ func Start() (p *PuddleNode, err error) {
 	p = &puddle
 	puddle.tnodes = make([]*tapestry.Tapestry, TAPESTRY_NODES)
 	puddle.rnodes = make([]*raft.RaftNode, RAFT_NODES)
-	puddle.clientPaths = make(map[string]string)
-	puddle.clients = make(map[string]*raft.Client)
+	puddle.clientPaths = make(map[uint64]string)
+	puddle.clients = make(map[uint64]*raft.Client)
 
 	// Start runnning the tapestry nodes. --------------
 	t, err := tapestry.Start(0, "")
@@ -106,8 +106,8 @@ func (puddle *PuddleNode) getRandomRaftNode() *raft.RaftNode {
 	return puddle.rnodes[index]
 }
 
-func (puddle *PuddleNode) getCurrentDir(addr string) string {
-	curdir, ok := puddle.clientPaths[addr]
+func (puddle *PuddleNode) getCurrentDir(id uint64) string {
+	curdir, ok := puddle.clientPaths[id]
 	if !ok {
 		panic("Did not found the current path of a client that is supposed to be registered")
 	}

@@ -16,8 +16,12 @@ func clientHash(shell *Shell, args []string) error {
 
 func ls(shell *Shell, args []string) error {
 	output, err := shell.c.Ls()
-	fmt.Println(output)
-	return err
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println(output)
+	}
+	return nil
 }
 
 func cd(shell *Shell, args []string) error {

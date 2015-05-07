@@ -8,9 +8,9 @@ import (
 	"strings"
 )
 
-func (puddle *PuddleNode) connect(req *ConnectRequest) (*ConnectReply, error) {
+func (puddle *PuddleNode) connect(req *ConnectRequest) (ConnectReply, error) {
 	reply := ConnectReply{}
-	addr := req.FromNode.Addr
+	// addr := req.FromNode.Addr
 	// raftNode := puddle.getRandomRaftNode()
 	// fromAddr := raft.NodeAddr{raft.AddrToId(addr, raftNode.GetConfig().NodeIdSize), addr}
 
@@ -19,23 +19,26 @@ func (puddle *PuddleNode) connect(req *ConnectRequest) (*ConnectReply, error) {
 	client, err := raft.CreateClient(*raftAddr)
 	if err != nil {
 		fmt.Println(err)
-		return nil, err
+		return ConnectReply{false, 0}, err
 	}
 
 	// Clients that just started the connection should start in root node.
-	puddle.clientPaths[addr] = "/"
-	puddle.clients[addr] = client
+	puddle.clientPaths[client.Id] = "/"
+	puddle.clients[client.Id] = client
 
 	reply.Ok = true
-	return &reply, nil
+	reply.Id = client.Id
+	fmt.Println("connect reply:", reply)
+	return reply, nil
 }
 
-func (puddle *PuddleNode) ls(req *LsRequest) (*LsReply, error) {
+func (puddle *PuddleNode) ls(req *LsRequest) (LsReply, error) {
 	reply := LsReply{}
-	elements := make([]string, FILES_PER_INODE)
+	var elements [FILES_PER_INODE]string
 	numElements := 0
 
-	curdir, ok := puddle.clientPaths[req.FromNode.Addr]
+	curdir, ok := puddle.clientPaths[req.ClientId]
+	// fmt.Printf("Lookingg for %v in clientPaths. Found %v\n", req.ClientId, curdir)
 	if !ok {
 		panic("Did not found the current path of a client that is supposed to be registered")
 	}
@@ -43,26 +46,28 @@ func (puddle *PuddleNode) ls(req *LsRequest) (*LsReply, error) {
 	// First, get the current directory inode
 	inode, err := puddle.getInode(curdir)
 	if err != nil {
-		return &LsReply{make([]string, 0), false}, err
+		return LsReply{false, ""}, err
 	}
 
 	// Empty file dir (debugging)
 	if inode.size == 0 {
-		reply.elements[0] = "No files, but hey, it got got in."
+		elements[0] = "No files, but hey, it got got in."
+		// reply.elements = makeString(elements)
+		reply.Elements = makeString(elements)
 		reply.Ok = true
-		return &reply, nil
+		return reply, nil
 	}
 
 	// Second, get the data block from this inode.
 	dataBlock, err := puddle.getInodeBlock(inode)
 	if err != nil {
-		return &LsReply{make([]string, 0), false}, err
+		return LsReply{false, ""}, err
 	}
 
 	// Then we get the name of all the block inodes
 	dirInodes, err := puddle.getBlockInodes(curdir, dataBlock)
 	if err != nil {
-		return &LsReply{make([]string, 0), false}, err
+		return LsReply{false, ""}, err
 	}
 
 	for _, n := range dirInodes {
@@ -70,16 +75,16 @@ func (puddle *PuddleNode) ls(req *LsRequest) (*LsReply, error) {
 		numElements++
 	}
 
-	reply.elements = elements
+	reply.Elements = makeString(elements)
 	reply.Ok = true
 
-	return &reply, nil
+	return reply, nil
 }
 
 func (puddle *PuddleNode) cd(req *CdRequest) (*CdReply, error) {
 	reply := CdReply{}
 
-	path := req.path
+	path := req.Path
 
 	if len(path) == 0 {
 		return nil, fmt.Errorf("Empty path")
@@ -97,7 +102,7 @@ func (puddle *PuddleNode) cd(req *CdRequest) (*CdReply, error) {
 	}
 
 	// Changes the current path of the client
-	puddle.clientPaths[req.FromNode.Addr] = path
+	puddle.clientPaths[req.ClientId] = path
 
 	reply.Ok = true
 	return &reply, nil
@@ -106,14 +111,14 @@ func (puddle *PuddleNode) cd(req *CdRequest) (*CdReply, error) {
 func (puddle *PuddleNode) mkdir(req *MkdirRequest) (*MkdirReply, error) {
 	reply := MkdirReply{}
 
-	path := req.path
-	addr := req.FromNode.Addr
+	path := req.Path
+	clientId := req.ClientId
 
 	if len(path) == 0 {
 		return nil, fmt.Errorf("Empty path")
 	}
 
-	dirInode, name, fullpath, dirpath, err := puddle.dir_namev(path, addr)
+	dirInode, name, fullpath, dirpath, err := puddle.dir_namev(path, clientId)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -168,8 +173,7 @@ func (puddle *PuddleNode) getInode(path string) (*Inode, error) {
 		return nil, err
 	}
 
-	fmt.Println("ls: Inode decoded")
-	fmt.Println(inode)
+	fmt.Println("node decoded:", inode)
 
 	return inode, nil
 }
@@ -216,7 +220,7 @@ func (puddle *PuddleNode) getBlockInodes(path string, data []byte) ([]*Inode, er
 }
 
 // Tribute to Weenix's version of dir_namev in kernel/fs/namev.c
-func (puddle *PuddleNode) dir_namev(pathname string, addr string) (*Inode, string, string, string, error) {
+func (puddle *PuddleNode) dir_namev(pathname string, addr uint64) (*Inode, string, string, string, error) {
 
 	path := removeExcessSlashes(pathname)
 	lastSlash := strings.LastIndex(path, "/")
@@ -311,4 +315,15 @@ func IdIntoByte(bytes []byte, id *tapestry.ID, start int) {
 	for i := 0; i < tapestry.DIGITS; i++ {
 		bytes[start+i] = byte(id[i])
 	}
+}
+
+func makeString(elements [FILES_PER_INODE]string) string {
+	ret := ""
+	for _, s := range elements {
+		if s == "" {
+			break
+		}
+		ret += "\t" + s
+	}
+	return ret
 }
