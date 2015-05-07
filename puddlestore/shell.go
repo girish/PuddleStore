@@ -10,7 +10,7 @@ import (
 )
 
 type Shell struct {
-	r    *puddlestore.PuddleNode
+	p    *puddlestore.PuddleNode
 	c    *puddlestore.Client
 	done chan bool
 }

@@ -26,6 +26,7 @@ type PuddleNode struct {
 	clients     map[string]*raft.Client // client addr -> client
 
 	rootInode *Inode
+	Local     PuddleAddr
 
 	server *PuddleRPCServer
 }
@@ -42,6 +43,8 @@ func Start() (p *PuddleNode, err error) {
 	p = &puddle
 	puddle.tnodes = make([]*tapestry.Tapestry, TAPESTRY_NODES)
 	puddle.rnodes = make([]*raft.RaftNode, RAFT_NODES)
+	puddle.clientPaths = make(map[string]string)
+	puddle.clients = make(map[string]*raft.Client)
 
 	// Start runnning the tapestry nodes. --------------
 	t, err := tapestry.Start(0, "")
@@ -85,6 +88,7 @@ func Start() (p *PuddleNode, err error) {
 
 	// RPC server --------------------------------------
 	puddle.server = newPuddlestoreRPCServer(p)
+	puddle.Local = PuddleAddr{puddle.server.listener.Addr().String()}
 
 	fmt.Printf("Started puddlestore, listening at %v\n", puddle.server.listener.Addr().String())
 	// -------------------------------------------------

@@ -16,7 +16,7 @@ func toggleDebug(shell *Shell, args []string) error {
 
 /*
 func showState(shell *Shell, args []string) error {
-	shell.r.ShowState()
+	shell.p.ShowState()
 	return nil
 }
 

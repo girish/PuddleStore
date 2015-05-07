@@ -38,22 +38,24 @@ func newPuddlestoreRPCServer(puddle *PuddleNode) (server *PuddleRPCServer) {
 	return
 }
 
-func (server *PuddleRPCServer) ConnectImpl(req *ConnectRequest, rep *ConnectReply) error {
+func (server *PuddleRPCServer) ConnectRPC(req *ConnectRequest, rep *ConnectReply) error {
 	rep, err := server.node.connect(req)
 	return err
 }
 
-func (server *PuddleRPCServer) lsImpl(req *lsRequest, rep *lsReply) error {
-	rep, err := server.node.ls(req)
-	return err
+func (server *PuddleRPCServer) LsImpl(req *LsRequest, rep *LsReply) error {
+	fmt.Println("Ya llego")
+	//rep, err := server.node.ls(req)
+	//return err
+	return nil
 }
 
-func (server *PuddleRPCServer) cdImpl(req *cdRequest, rep *cdReply) error {
+func (server *PuddleRPCServer) CdImpl(req *CdRequest, rep *CdReply) error {
 	rep, err := server.node.cd(req)
 	return err
 }
 
-func (server *PuddleRPCServer) mkdirImpl(req *mkdirRequest, rep *mkdirReply) error {
+func (server *PuddleRPCServer) MkdirImpl(req *MkdirRequest, rep *MkdirReply) error {
 	rep, err := server.node.mkdir(req)
 	return err
 }

@@ -11,10 +11,12 @@ import (
 func (puddle *PuddleNode) connect(req *ConnectRequest) (*ConnectReply, error) {
 	reply := ConnectReply{}
 	addr := req.FromNode.Addr
-	raftNode := puddle.getRandomRaftNode()
-	fromAddr := raft.NodeAddr{raft.AddrToId(addr, raftNode.GetConfig().NodeIdSize), addr}
+	// raftNode := puddle.getRandomRaftNode()
+	// fromAddr := raft.NodeAddr{raft.AddrToId(addr, raftNode.GetConfig().NodeIdSize), addr}
 
-	client, err := raft.CreateClient(fromAddr)
+	raftAddr := puddle.getRandomRaftNode().GetLocalAddr()
+
+	client, err := raft.CreateClient(*raftAddr)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -28,8 +30,8 @@ func (puddle *PuddleNode) connect(req *ConnectRequest) (*ConnectReply, error) {
 	return &reply, nil
 }
 
-func (puddle *PuddleNode) ls(req *lsRequest) (*lsReply, error) {
-	reply := lsReply{}
+func (puddle *PuddleNode) ls(req *LsRequest) (*LsReply, error) {
+	reply := LsReply{}
 	elements := make([]string, FILES_PER_INODE)
 	numElements := 0
 
@@ -41,19 +43,26 @@ func (puddle *PuddleNode) ls(req *lsRequest) (*lsReply, error) {
 	// First, get the current directory inode
 	inode, err := puddle.getInode(curdir)
 	if err != nil {
-		return &lsReply{make([]string, 0), false}, err
+		return &LsReply{make([]string, 0), false}, err
+	}
+
+	// Empty file dir (debugging)
+	if inode.size == 0 {
+		reply.elements[0] = "No files, but hey, it got got in."
+		reply.Ok = true
+		return &reply, nil
 	}
 
 	// Second, get the data block from this inode.
 	dataBlock, err := puddle.getInodeBlock(inode)
 	if err != nil {
-		return &lsReply{make([]string, 0), false}, err
+		return &LsReply{make([]string, 0), false}, err
 	}
 
 	// Then we get the name of all the block inodes
 	dirInodes, err := puddle.getBlockInodes(curdir, dataBlock)
 	if err != nil {
-		return &lsReply{make([]string, 0), false}, err
+		return &LsReply{make([]string, 0), false}, err
 	}
 
 	for _, n := range dirInodes {
@@ -67,8 +76,8 @@ func (puddle *PuddleNode) ls(req *lsRequest) (*lsReply, error) {
 	return &reply, nil
 }
 
-func (puddle *PuddleNode) cd(req *cdRequest) (*cdReply, error) {
-	reply := cdReply{}
+func (puddle *PuddleNode) cd(req *CdRequest) (*CdReply, error) {
+	reply := CdReply{}
 
 	path := req.path
 
@@ -84,7 +93,7 @@ func (puddle *PuddleNode) cd(req *cdRequest) (*cdReply, error) {
 	_, err := puddle.getInode(path)
 
 	if err != nil { // Path does not exist.
-		return &cdReply{false}, err
+		return &CdReply{false}, err
 	}
 
 	// Changes the current path of the client
@@ -94,8 +103,8 @@ func (puddle *PuddleNode) cd(req *cdRequest) (*cdReply, error) {
 	return &reply, nil
 }
 
-func (puddle *PuddleNode) mkdir(req *mkdirRequest) (*mkdirReply, error) {
-	reply := mkdirReply{}
+func (puddle *PuddleNode) mkdir(req *MkdirRequest) (*MkdirReply, error) {
+	reply := MkdirReply{}
 
 	path := req.path
 	addr := req.FromNode.Addr
