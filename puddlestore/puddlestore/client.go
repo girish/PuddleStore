@@ -56,3 +56,21 @@ func (c *Client) Ls() (elements string, err error) {
 
 	return reply.Elements, nil
 }
+
+func (c *Client) Mkdir(path string) (err error) {
+	request := MkdirRequest{c.Id, path}
+
+	remoteAddr := c.PuddleServ
+
+	reply, err := mkdirRPC(&remoteAddr, request)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	if !reply.Ok {
+		fmt.Errorf("Could not create directory")
+	}
+
+	return nil
+}

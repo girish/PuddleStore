@@ -35,7 +35,7 @@ func (puddle *PuddleNode) connect(req *ConnectRequest) (ConnectReply, error) {
 func (puddle *PuddleNode) ls(req *LsRequest) (LsReply, error) {
 	reply := LsReply{}
 	var elements [FILES_PER_INODE]string
-	numElements := 0
+	numElements := 2 // Leave 2 spots for '.' and '..'
 
 	curdir, ok := puddle.clientPaths[req.ClientId]
 	// fmt.Printf("Lookingg for %v in clientPaths. Found %v\n", req.ClientId, curdir)
@@ -50,28 +50,32 @@ func (puddle *PuddleNode) ls(req *LsRequest) (LsReply, error) {
 	}
 
 	// Empty file dir (debugging)
-	if inode.size == 0 {
+	/*if inode.size == 0 {
 		elements[0] = "No files, but hey, it got got in."
 		// reply.elements = makeString(elements)
 		reply.Elements = makeString(elements)
 		reply.Ok = true
 		return reply, nil
-	}
+	}*/
 
 	// Second, get the data block from this inode.
-	dataBlock, err := puddle.getInodeBlock(inode)
+	dataBlock, err := puddle.getInodeBlock(curdir)
 	if err != nil {
 		return LsReply{false, ""}, err
 	}
 
 	// Then we get the name of all the block inodes
-	dirInodes, err := puddle.getBlockInodes(curdir, dataBlock)
+	dirInodes, err := puddle.getBlockInodes(curdir, inode, dataBlock)
 	if err != nil {
 		return LsReply{false, ""}, err
 	}
 
-	for _, n := range dirInodes {
-		elements[numElements] = n.name
+	elements[0] = "."
+	elements[1] = ".."
+	size := inode.size / tapestry.DIGITS
+	fmt.Println("Size in ls:", size)
+	for i := uint32(2); i < size; i++ {
+		elements[numElements-2] = dirInodes[i-2].name
 		numElements++
 	}
 
@@ -81,13 +85,13 @@ func (puddle *PuddleNode) ls(req *LsRequest) (LsReply, error) {
 	return reply, nil
 }
 
-func (puddle *PuddleNode) cd(req *CdRequest) (*CdReply, error) {
+func (puddle *PuddleNode) cd(req *CdRequest) (CdReply, error) {
 	reply := CdReply{}
 
 	path := req.Path
 
 	if len(path) == 0 {
-		return nil, fmt.Errorf("Empty path")
+		return CdReply{false}, fmt.Errorf("Empty path")
 	}
 
 	// TODO: Support relative paths.
@@ -98,103 +102,150 @@ func (puddle *PuddleNode) cd(req *CdRequest) (*CdReply, error) {
 	_, err := puddle.getInode(path)
 
 	if err != nil { // Path does not exist.
-		return &CdReply{false}, err
+		return CdReply{false}, err
 	}
 
 	// Changes the current path of the client
 	puddle.clientPaths[req.ClientId] = path
 
 	reply.Ok = true
-	return &reply, nil
+	return reply, nil
 }
 
-func (puddle *PuddleNode) mkdir(req *MkdirRequest) (*MkdirReply, error) {
+func (puddle *PuddleNode) mkdir(req *MkdirRequest) (MkdirReply, error) {
+	fmt.Println("Entered mkdir")
 	reply := MkdirReply{}
 
 	path := req.Path
 	clientId := req.ClientId
 
 	if len(path) == 0 {
-		return nil, fmt.Errorf("Empty path")
+		return reply, fmt.Errorf("Empty path")
 	}
 
 	dirInode, name, fullpath, dirpath, err := puddle.dir_namev(path, clientId)
 	if err != nil {
 		fmt.Println(err)
-		return nil, err
+		return reply, err
 	}
-	dirBlock, err := puddle.getInodeBlock(dirInode)
-	dirBlockPath := fmt.Sprintf("%v:%v", dirpath, "indirect")
 
-	newDirInode := CreateDirInode(name)
+	// This is the root node creation.
+	if dirInode == nil {
 
-	newDirBlock := CreateBlock()
+		// Create the root Inode and its block
+		newDirInode := CreateDirInode(name)
+		newDirBlock := CreateBlock()
 
-	blockPath := fmt.Sprintf("%v:%v", fullpath, "indirect")
-	dotPath := fullpath
-	dotdotPath := dirpath
+		// Set block paths for the indirect block and dot references
+		blockPath := fmt.Sprintf("%v:%v", fullpath, "indirect") // this will be '/:indirect'
+		dotPath := fullpath                                     // . -> '/'
+		dotdotPath := dirpath                                   // .. -> '/'
 
-	newDirInodeHash := tapestry.Hash(blockPath)
-	dotHash := tapestry.Hash(dotPath)
-	dotdotHash := tapestry.Hash(dotdotPath)
+		// Hash the dot references to put them on the indirect block.
+		// newDirInodeHash := tapestry.Hash(blockPath)
+		blockHash := tapestry.Hash(blockPath)
+		dotHash := tapestry.Hash(dotPath)
+		dotdotHash := tapestry.Hash(dotdotPath)
 
-	IdIntoByte(newDirBlock.bytes, &dotHash, 0)
-	IdIntoByte(newDirBlock.bytes, &dotdotHash, tapestry.DIGITS)
+		// Insert the dot hashes into the new indirect block. TODO: This should be the AGUID, not VGUID, use raft
+		IdIntoByte(newDirBlock.bytes, &dotHash, 0)
+		IdIntoByte(newDirBlock.bytes, &dotdotHash, tapestry.DIGITS)
 
-	IdIntoByte(dirBlock, &newDirInodeHash, int(dirInode.size))
-	dirInode.size += tapestry.DIGITS
+		// Save the root Inode indirect block in tapestry
+		tapestry.TapestryStore(puddle.getRandomTapestryNode(), blockPath, newDirBlock.bytes)
 
-	tapestry.TapestryStore(puddle.getRandomTapestryNode(), blockPath, newDirBlock.bytes)
-	tapestry.TapestryStore(puddle.getRandomTapestryNode(), dirBlockPath, newDirBlock.bytes)
+		newDirInode.indirect = hashToGuid(blockHash)
+		fmt.Println(blockHash, "->", newDirInode.indirect)
 
-	encodedDirNode, err := dirInode.GobEncode()
-	encodedNewDirNode, err := newDirInode.GobEncode()
+		// Save the root Inode
+		puddle.StoreInode(fullpath, newDirInode)
+		/*encodedNewDirNode, err := newDirInode.GobEncode()
+		if err != nil {
+			fmt.Println(err)
+			return reply, err
+		}
+		tapestry.TapestryStore(puddle.getRandomTapestryNode(), fullpath, encodedNewDirNode)
+		*/
 
-	tapestry.TapestryStore(puddle.getRandomTapestryNode(), dirpath, encodedDirNode)
-	tapestry.TapestryStore(puddle.getRandomTapestryNode(), fullpath, encodedNewDirNode)
+	} else {
+		// Get indirect block from the directory that is going to create
+		// the node
+		dirBlock, err := puddle.getInodeBlock(dirpath)
+		if err != nil {
+			fmt.Println(err)
+			return reply, err
+		}
+
+		// Create new inode and block
+		newDirInode := CreateDirInode(name)
+		newDirBlock := CreateBlock()
+
+		// Declare block paths
+		dirBlockPath := fmt.Sprintf("%v:%v", dirpath, "indirect")
+		blockPath := fmt.Sprintf("%v:%v", fullpath, "indirect")
+		dotPath := fullpath
+		dotdotPath := dirpath
+
+		// Get hashes
+		newDirInodeHash := tapestry.Hash(blockPath)
+		//dotHash := tapestry.Hash(dotPath)
+		//dotdotHash := tapestry.Hash(dotdotPath)
+
+		fmt.Println("Dirpath: %v", dirpath)
+		fmt.Println("Fullpath: %v", fullpath)
+		fmt.Println("blockPath: %v", blockPath)
+		fmt.Println("dotPath: %v", dotPath)
+		fmt.Println("dotdotPath: %v", dotdotPath)
+
+		// Write '.' and '..' to new dir
+		//IdIntoByte(newDirBlock.bytes, &dotHash, 0)
+		//IdIntoByte(newDirBlock.bytes, &dotdotHash, tapestry.DIGITS)
+
+		// Write the new dir to the old dir and increase its size
+		IdIntoByte(dirBlock, &newDirInodeHash, int(dirInode.size))
+		dirInode.size += tapestry.DIGITS
+
+		// Save both blocks in tapestry
+		puddle.StoreIndirectBlock(blockPath, newDirBlock.bytes)
+		puddle.StoreIndirectBlock(dirBlockPath, newDirBlock.bytes)
+		tapestry.TapestryStore(puddle.getRandomTapestryNode(), blockPath, newDirBlock.bytes)
+		tapestry.TapestryStore(puddle.getRandomTapestryNode(), dirBlockPath, dirBlock)
+
+		// Encode both inodes
+		puddle.StoreInode(dirpath, dirInode)
+		puddle.StoreInode(fullpath, newDirInode)
+		/*
+			encodedDirNode, err := dirInode.GobEncode()
+			if err != nil {
+				fmt.Println(err)
+				return reply, err
+			}
+			encodedNewDirNode, err := newDirInode.GobEncode()
+			if err != nil {
+				fmt.Println(err)
+				return reply, err
+			}
+
+			// Save both inodes in tapestry
+			tapestry.TapestryRemove(puddle.getRandomTapestryNode(), dirpath)
+			tapestry.TapestryStore(puddle.getRandomTapestryNode(), dirpath, encodedDirNode)
+			tapestry.TapestryStore(puddle.getRandomTapestryNode(), fullpath, encodedNewDirNode)
+		*/
+	}
 
 	reply.Ok = true
-	return &reply, nil
+	return reply, nil
 }
 
-// Gets an inode from a given path
-func (puddle *PuddleNode) getInode(path string) (*Inode, error) {
-	tapestryNode := puddle.getRandomTapestryNode()
-	data, err := tapestry.TapestryGet(tapestryNode, path)
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
-
-	inode := new(Inode)
-	err = inode.GobDecode(data)
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
-
-	fmt.Println("node decoded:", inode)
-
-	return inode, nil
-}
-
-func (puddle *PuddleNode) getInodeBlock(inode *Inode) ([]byte, error) {
-	tapestryNode := puddle.getRandomTapestryNode()
-	dataBlock, err := tapestry.TapestryGet(tapestryNode, string(inode.indirect))
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
-	return dataBlock, nil
-}
-
-func (puddle *PuddleNode) getBlockInodes(path string, data []byte) ([]*Inode, error) {
+func (puddle *PuddleNode) getBlockInodes(path string, inode *Inode, data []byte) ([]*Inode, error) {
 	tapestryNode := puddle.getRandomTapestryNode()
 	files := make([]*Inode, FILES_PER_INODE)
 	numFiles := 0
 
 	var fileguid uint64
-	for i := 0; i < FILES_PER_INODE; i++ {
+	size := inode.size / tapestry.DIGITS
+	for i := uint32(0); i < size; i++ {
+		fmt.Println(i, "<", size)
 		fileguid = uint64(data[i])
 
 		// We finished the data block. There is no more.
@@ -202,7 +253,7 @@ func (puddle *PuddleNode) getBlockInodes(path string, data []byte) ([]*Inode, er
 			return files, nil
 		}
 
-		filevguid := fmt.Sprintf("%v:%v", path, strconv.FormatUint(fileguid, 10))
+		filevguid := fmt.Sprintf("%v:%v", path, strconv.FormatUint(uint64(i+1), 10))
 		fileData, err := tapestry.TapestryGet(tapestryNode, filevguid)
 		if err != nil {
 			fmt.Println(err)
@@ -226,14 +277,20 @@ func (puddle *PuddleNode) dir_namev(pathname string, addr uint64) (*Inode, strin
 	lastSlash := strings.LastIndex(path, "/")
 	var dirPath, name string
 
-	if lastSlash != -1 && len(path) != 1 { // K. all good
+	fmt.Println("Last slash:", lastSlash)
+
+	if lastSlash == 0 && len(path) != 1 {
+		return puddle.getRootInode(), pathname[1:], pathname, "/", nil
+	} else if lastSlash == 0 {
+		return nil, "/", "/", "", nil
+	} else if lastSlash != -1 && len(path) != 1 { // K. all good
 		dirPath = path[:lastSlash]
 		name = path[lastSlash+1:]
 	} else if lastSlash == -1 { // No slashes at all (relative path probably)
 		dirPath = puddle.getCurrentDir(addr)
 		name = path
-	} else { // This is root
-		return puddle.rootInode, "", "/", "", nil
+	} else {
+		panic("What should go here?")
 	}
 
 	if dirPath[0] != '/' {
@@ -326,4 +383,12 @@ func makeString(elements [FILES_PER_INODE]string) string {
 		ret += "\t" + s
 	}
 	return ret
+}
+
+func hashToGuid(id tapestry.ID) guid {
+	s := ""
+	for i := 0; i < tapestry.DIGITS; i++ {
+		s += strconv.FormatUint(uint64(byte(id[i])), tapestry.BASE)
+	}
+	return guid(strings.ToUpper(s))
 }

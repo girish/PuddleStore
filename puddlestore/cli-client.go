@@ -29,5 +29,10 @@ func cd(shell *Shell, args []string) error {
 }
 
 func mkdir(shell *Shell, args []string) error {
+	fmt.Println("Runnink mkdir with", args[1])
+	err := shell.c.Mkdir(args[1])
+	if err != nil {
+		fmt.Println(err)
+	}
 	return nil
 }

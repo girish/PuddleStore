@@ -25,17 +25,13 @@ type PuddleNode struct {
 	clientPaths map[uint64]string       // client id -> curpath
 	clients     map[uint64]*raft.Client // client id -> client
 
-	rootInode *Inode
-	Local     PuddleAddr
+	Local PuddleAddr
 
 	server *PuddleRPCServer
 }
 
 type PuddleAddr struct {
 	Addr string
-}
-
-func CreatePuddleStore() {
 }
 
 func Start() (p *PuddleNode, err error) {
@@ -70,20 +66,25 @@ func Start() (p *PuddleNode, err error) {
 	// -------------------------------------------------
 
 	// Create the root node ----------------------------
-	// vguid := randSeq(5)
-	root := CreateRootInode()
-	// puddlestore.paths["/"] = vguid
-	encodedRoot, err := root.GobEncode()
+	_, err = puddle.mkdir(&MkdirRequest{0, "/"})
 	if err != nil {
-		panic(err)
+		panic("Could not create root node")
 	}
-	err = tapestry.TapestryStore(puddle.tnodes[0].GetLocalNode(),
-		"/", encodedRoot)
-	if err != nil {
-		panic(err)
-	}
+	/*
+		// vguid := randSeq(5)
+		root := CreateRootInode()
+		// puddlestore.paths["/"] = vguid
+		encodedRoot, err := root.GobEncode()
+		if err != nil {
+			panic(err)
+		}
+		err = tapestry.TapestryStore(puddle.tnodes[0].GetLocalNode(),
+			"/", encodedRoot)
+		if err != nil {
+			panic(err)
+		}*/
 
-	puddle.rootInode = root
+	// puddle.rootInode, err = puddle.getInode("/")
 	// -------------------------------------------------
 
 	// RPC server --------------------------------------
@@ -112,6 +113,14 @@ func (puddle *PuddleNode) getCurrentDir(id uint64) string {
 		panic("Did not found the current path of a client that is supposed to be registered")
 	}
 	return curdir
+}
+
+func (puddle *PuddleNode) getRootInode() *Inode {
+	inode, err := puddle.getInode("/")
+	if err != nil {
+		panic("Root inode not found!")
+	}
+	return inode
 }
 
 func randSeq(n int) string {

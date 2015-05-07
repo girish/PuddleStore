@@ -51,11 +51,13 @@ func (server *PuddleRPCServer) LsImpl(req *LsRequest, rep *LsReply) error {
 }
 
 func (server *PuddleRPCServer) CdImpl(req *CdRequest, rep *CdReply) error {
-	rep, err := server.node.cd(req)
+	rvreply, err := server.node.cd(req)
+	*rep = rvreply
 	return err
 }
 
 func (server *PuddleRPCServer) MkdirImpl(req *MkdirRequest, rep *MkdirReply) error {
-	rep, err := server.node.mkdir(req)
+	rvreply, err := server.node.mkdir(req)
+	*rep = rvreply
 	return err
 }

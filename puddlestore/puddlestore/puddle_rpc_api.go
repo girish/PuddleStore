@@ -51,8 +51,8 @@ func lsRPC(remotenode *PuddleAddr, request LsRequest) (*LsReply, error) {
 }
 
 type CdRequest struct {
-	Path     string
 	ClientId uint64
+	Path     string
 }
 
 type CdReply struct {
@@ -72,8 +72,8 @@ func cdRPC(remotenode *PuddleAddr, request CdRequest) (*CdReply, error) {
 }
 
 type MkdirRequest struct {
-	Path     string
 	ClientId uint64
+	Path     string
 }
 
 type MkdirReply struct {
