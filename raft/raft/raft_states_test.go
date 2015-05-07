@@ -162,7 +162,6 @@ func TestDisruptiveEnvironment(t *testing.T) {
 	// removeLogs(nodes)
 }
 
-/*
 func TestClient(t *testing.T) {
 	config := DefaultConfig()
 	config.ClusterSize = 5
@@ -191,16 +190,16 @@ func TestClient(t *testing.T) {
 		t.Errorf("Could not excecute command.")
 	}
 
-		err = client.SendRequest(HASH_CHAIN_ADD, []byte("Hola como estas"))
-		if err != nil {
-			t.Errorf("Could not excecute command.")
-		}
-		fmt.Println(string(leader.getLastLogEntry().Data))
-		if string(leader.getLastLogEntry().Data) != "Hola como estas" {
-			t.Errorf("Data wasn't saved in log.")
-		}
+	err = client.SendRequest(SET, []byte("Hola:hello"))
+	if err != nil {
+		t.Errorf("Could not excecute command.")
+	}
+	time.Sleep(time.Millisecond * 500)
+	fmt.Println(string(leader.getLastLogEntry().Data))
+	if string(leader.getLastLogEntry().Data) != "Hola:hello" {
+		t.Errorf("Data wasn't saved in log. the current data is: %v", string(leader.getLastLogEntry().Data))
+	}
 }
-*/
 
 func disableRandomNode(n *RaftNode) {
 	n.Testing.PauseWorld(true)

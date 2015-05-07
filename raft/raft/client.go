@@ -101,3 +101,46 @@ LOOP:
 	}
 	return
 }
+func (c *Client) SendRequestWithResponse(command FsmCommand, data []byte) (err error, resp string) {
+
+	request := ClientRequest{
+		c.Id,
+		c.SeqNum,
+		command,
+		data,
+	}
+	c.SeqNum += 1
+
+	var reply *ClientReply
+
+	retries := 0
+
+LOOP:
+	for retries < MAX_RETRIES {
+		reply, err = ClientRequestRPC(&c.Leader, request)
+		if err != nil {
+			return
+		}
+		switch reply.Status {
+		case OK:
+			Debug.Printf("%v is the leader\n", c.Leader)
+			Out.Printf("Request returned \"%v\".\n", reply.Response)
+			break LOOP
+		case REQ_FAILED:
+			Error.Printf("Request failed: %v\n", reply.Response)
+			retries++
+			break LOOP
+		case NOT_LEADER:
+			// The person we've contacted isn't the leader. Use
+			// their hint to find the leader
+			c.Leader = reply.LeaderHint
+		case ELECTION_IN_PROGRESS:
+			// An election is in progress. Accept the hint
+			// and wait an appropriate amount of time, so the
+			// election can finish.
+			c.Leader = reply.LeaderHint
+			time.Sleep(time.Millisecond * 200)
+		}
+	}
+	return
+}
