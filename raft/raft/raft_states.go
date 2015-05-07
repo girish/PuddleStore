@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"strconv"
 	"time"
+	//"fmt"
 )
 
 type state func() state
@@ -372,11 +373,12 @@ func (r *RaftNode) doLeader() state {
 				if req.Command == GET {
 					key := string(req.Data)
 					var message string
-					if val, ok := r.fileMap[key]; ok {
+					if req.Data == nil {
+						message = "FAIL: The key cannot be nil"
+					} else if val, ok := r.fileMap[key]; ok {
 						message = "SUCCESS:" + val
 					} else {
 						message = "FAIL: The key is not in the dictionary"
-
 					}
 					if r.LeaderAddr != nil {
 						rep <- ClientReply{OK, message, *r.LeaderAddr}
@@ -820,8 +822,10 @@ func (r *RaftNode) sendAppendEntries(entries []LogEntry) (fallBack, sentToMajori
  */
 func makeElectionTimeout() <-chan time.Time {
 	// TODO: Students should implement this method
-	millis := rand.Int()%300 + 150
+	millis := rand.Int()%400 + 150
 	return time.After(time.Millisecond * time.Duration(millis))
+	//porque no usamos el de config?
+	//return time.After(time.Millisecond * 150)
 }
 
 func (r *RaftNode) makeBeats() <-chan time.Time {

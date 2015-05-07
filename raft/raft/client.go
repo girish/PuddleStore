@@ -101,8 +101,8 @@ LOOP:
 	}
 	return
 }
-func (c *Client) SendRequestWithResponse(command FsmCommand, data []byte) (err error, resp string) {
-
+//Similar to the function above but it returns a response
+func (c *Client) SendRequestWithResponse(command FsmCommand, data []byte) (reply *ClientReply, err error) {
 	request := ClientRequest{
 		c.Id,
 		c.SeqNum,
@@ -111,25 +111,23 @@ func (c *Client) SendRequestWithResponse(command FsmCommand, data []byte) (err e
 	}
 	c.SeqNum += 1
 
-	var reply *ClientReply
+	//var reply *ClientReply
 
 	retries := 0
-
-LOOP:
 	for retries < MAX_RETRIES {
 		reply, err = ClientRequestRPC(&c.Leader, request)
 		if err != nil {
-			return
+			return nil, err
 		}
 		switch reply.Status {
 		case OK:
 			Debug.Printf("%v is the leader\n", c.Leader)
 			Out.Printf("Request returned \"%v\".\n", reply.Response)
-			break LOOP
+			return reply, nil
 		case REQ_FAILED:
 			Error.Printf("Request failed: %v\n", reply.Response)
 			retries++
-			break LOOP
+			return reply, nil 
 		case NOT_LEADER:
 			// The person we've contacted isn't the leader. Use
 			// their hint to find the leader
@@ -142,5 +140,5 @@ LOOP:
 			time.Sleep(time.Millisecond * 200)
 		}
 	}
-	return
+	return nil, nil
 }

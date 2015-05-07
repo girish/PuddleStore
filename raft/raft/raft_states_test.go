@@ -2,7 +2,7 @@ package raft
 
 import (
 	"fmt"
-	//"strings"
+	"strings"
 	"math/rand"
 	"testing"
 	"time"
@@ -205,6 +205,256 @@ func disableRandomNode(n *RaftNode) {
 	n.Testing.PauseWorld(true)
 }
 
+/* This function has parts.
+- The first part test the correct procedure of GET SET and REMOVE,
+the basic operations of the map
+
+- The second part test the correct handling of special cases. This includes:
+-Getting a key that is not there
+-Getting a key that was just removed
+-remove an invalid key
+*/
+func TestFileMap(t *testing.T) {
+	//Set up
+	config := DefaultConfig()
+	config.ClusterSize = 5
+	config.LogPath = randSeq(10)
+
+	nodes, err := CreateLocalCluster(config)
+	if err != nil {
+		t.Errorf("Could not create nodes")
+		return
+	}
+
+	time.Sleep(time.Millisecond * 500)
+	leader := getLeader(nodes)
+
+	client, err := CreateClient(*nodes[0].GetLocalAddr())
+	if err != nil {
+		t.Errorf("Could not create client")
+	}
+
+	if client.Id != leader.getLastLogIndex() {
+		t.Errorf("Client not really registered")
+	}
+	retries := 0
+	RETRY:
+	err = client.SendRequest(HASH_CHAIN_INIT, []byte("tacos"))
+	if err != nil {
+		retries++
+		if retries < 3 {
+			goto RETRY
+		} else {
+			t.Errorf("Could not register client")
+			return
+		}
+	}
+
+	//Now we start testing part 1
+	//We set it.
+	reply, err := client.SendRequestWithResponse(SET, []byte("hello:hola"))
+	if reply.Status != OK {
+		t.Errorf("Request was not executed. Response: %v", reply.Response)
+	} else {
+		response := reply.Response
+		success := strings.Split(response, ":")[0]
+		if success != "SUCCESS" {
+			t.Errorf("Key value pair was not set. Response: %v", reply.Response)
+		}
+	}
+	//We get it
+	reply, err = client.SendRequestWithResponse(GET, []byte("hello"))
+	if reply.Status != OK {
+		t.Errorf("Request was not executed. Response: %v", reply.Response)
+	} else {
+		response := reply.Response
+		val := strings.Split(response, ":")[1]
+		if val != "hola" {
+			t.Errorf("Key linked with wrong value. Response: %v", reply.Response)
+		}
+	}
+	//We remove it
+	reply, err = client.SendRequestWithResponse(REMOVE, []byte("hello"))
+	if reply.Status != OK {
+		t.Errorf("Request was not executed. Response: %v", reply.Response)
+	} else {
+		response := reply.Response
+		success := strings.Split(response, ":")[0]
+		if success != "SUCCESS" {
+			t.Errorf("Value was not removed successfully. Response: %v", reply.Response)
+		}
+	}
+
+	reply, err = client.SendRequestWithResponse(GET, []byte("hello"))
+	if reply.Status != OK {
+		t.Errorf("Request was not executed. Response: %v", reply.Response)
+	} else {
+		response := reply.Response
+		success := strings.Split(response, ":")[0]
+		if success != "FAIL" {
+			t.Errorf("Value is still in the map :(. Response: %v", reply.Response)
+		}
+	}
+
+	//We now check the correct behavior of invalid commands
+
+	//Invalid get
+	reply, err = client.SendRequestWithResponse(GET, []byte("gracias"))
+	if reply.Status != OK {
+		t.Errorf("Request was not executed. Response: %v", reply.Response)
+	} else {
+		response := reply.Response
+		success := strings.Split(response, ":")[0]
+		if success != "FAIL" {
+			t.Errorf("Unknown value is in the map. Response: %v", reply.Response)
+		}
+	}
+	//Invalid set
+	reply, err = client.SendRequestWithResponse(SET, nil)
+	if reply.Status != OK {
+		t.Errorf("Request was not executed. Response: %v", reply.Response)
+	} else {
+		response := reply.Response
+		success := strings.Split(response, ":")[0]
+		if success != "FAIL" {
+			t.Errorf("Attempted to set with nil. Response: %v", reply.Response)
+		}
+	}
+
+	//Invalid remove - nil
+	reply, err = client.SendRequestWithResponse(REMOVE, nil)
+	if reply.Status != OK {
+		t.Errorf("Request was not executed. Response: %v", reply.Response)
+	} else {
+		response := reply.Response
+		success := strings.Split(response, ":")[0]
+		if success != "FAIL" {
+			t.Errorf("Attempted to remove nil. Response: %v", reply.Response)
+		}
+	}
+
+	//Invalid remove - non exisitng key
+	reply, err = client.SendRequestWithResponse(REMOVE, []byte("gracias"))
+	if reply.Status != OK {
+		t.Errorf("Request was not executed. Response: %v", reply.Response)
+	} else {
+		response := reply.Response
+		success := strings.Split(response, ":")[0]
+		if success != "FAIL" {
+			t.Errorf("?! Removed a key that was not in the map. Response: %v", reply.Response)
+		}
+	}
+}
+
+/* This function performs a more thorough test of the FileMap's
+consistency by performing multiple sets and then making sure that all of them
+are available followed by removing all of them making sure that
+all of them have been removed.
+*/
+func TestFileMapConsistency(t *testing.T) {
+	//Set up
+	config := DefaultConfig()
+	config.ClusterSize = 5
+	config.LogPath = randSeq(10)
+
+	nodes, err := CreateLocalCluster(config)
+	if err != nil {
+		t.Errorf("Could not create nodes")
+		return
+	}
+
+	time.Sleep(time.Millisecond * 500)
+	leader := getLeader(nodes)
+
+	client, err := CreateClient(*nodes[0].GetLocalAddr())
+	if err != nil {
+		t.Errorf("Could not create client")
+	}
+
+	if client.Id != leader.getLastLogIndex() {
+		t.Errorf("Client not really registered")
+	}
+	retries := 0
+	RETRY:
+	err = client.SendRequest(HASH_CHAIN_INIT, []byte("tacos"))
+	if err != nil {
+		retries++
+		if retries < 3 {
+			goto RETRY
+		} else {
+			t.Errorf("Could not register client")
+			return
+		}
+	}
+
+	//Now we start setting
+	//We set them.
+	var ascii int
+	ascii = 48
+	key := ""
+	for i := 0; i < 15; i++ {
+		key = key + string(ascii)
+		reply, _ := client.SendRequestWithResponse(SET, []byte(key+":"+key))
+		if reply.Status != OK {
+			t.Errorf("Request was not executed. Response: %v", reply.Response)
+		} else {
+			response := reply.Response
+			success := strings.Split(response, ":")[0]
+			if success != "SUCCESS" {
+				t.Errorf("Key value pair was not set. Response: %v", reply.Response)
+			}
+		}
+	}
+
+	//Now we get them
+	key = ""
+	for i := 0; i < 15; i++ {
+		key = key + string(ascii)
+		reply, _ := client.SendRequestWithResponse(GET, []byte(key))
+		if reply.Status != OK {
+			t.Errorf("Request was not executed. Response: %v", reply.Response)
+		} else {
+			response := reply.Response
+			val := strings.Split(response, ":")[1]
+			if val != key {
+				t.Errorf("Key linked with wrong value. Response: %v", reply.Response)
+			}
+		}
+	}
+	//Now we remove them
+	key = ""
+	for i := 0; i < 15; i++ {
+		key = key + string(ascii)
+		reply, _ := client.SendRequestWithResponse(REMOVE, []byte(key))
+		if reply.Status != OK {
+			t.Errorf("Request was not executed. Response: %v", reply.Response)
+		} else {
+			response := reply.Response
+			success := strings.Split(response, ":")[0]
+			if success != "SUCCESS" {
+				t.Errorf("Value was not removed successfully. Response: %v", reply.Response)
+			}
+		}
+	}
+	//Now we make sure they are not there
+	key = ""
+	for i := 0; i < 100; i++ {
+		key = key + string(ascii)
+		reply, _ := client.SendRequestWithResponse(GET, []byte("hello"))
+		if reply.Status != OK {
+			t.Errorf("Request was not executed. Response: %v", reply.Response)
+		} else {
+			response := reply.Response
+			success := strings.Split(response, ":")[0]
+			if success != "FAIL" {
+				t.Errorf("Value is still in the map :(. Response: %v", reply.Response)
+			}
+		}
+	}
+
+}
+
+
 func checkLogOrder(nodes []*RaftNode) bool {
 	for _, n := range nodes {
 		prevIndex := int64(-1)
@@ -338,6 +588,8 @@ func randSeq(n int) string {
 	}
 	return string(b)
 }
+
+
 
 /*
 func checkMajority(leader *RaftNode, nodes []*RaftNode) bool {

@@ -35,20 +35,26 @@ func (r *RaftNode) processLog(entry LogEntry) ClientReply {
 		//So by now we have received consensus, we need to delete
 		r.requestMutex.Lock()
 		key := string(entry.Data)
-		if _, ok := r.fileMap[key]; ok {
+		if entry.Data == nil {
+			response = "FAIL:The key cannot be nil"
+		}else if val, ok := r.fileMap[key]; ok {
 			delete(r.fileMap, key)
-			response = "The key " + key + " has been deleted."
+			response = "SUCCESS:" + val
 		} else {
-			response = "The key does not exist"
+			response = "FAIL:The key does not exist"
 		}
 		r.requestMutex.Unlock()
 	case SET:
 		r.requestMutex.Lock()
-		keyVal := string(entry.Data)
-		keyValAr := strings.Split(keyVal, ":")
-		r.fileMap[keyValAr[0]] = keyValAr[1]
+		if entry.Data == nil {
+			response = "FAIL:The key cannot be nil"
+		} else {
+			keyVal := string(entry.Data)
+			keyValAr := strings.Split(keyVal, ":")
+			r.fileMap[keyValAr[0]] = keyValAr[1]
+			response = "SUCCESS:" + keyValAr[1]
+		}
 		r.requestMutex.Unlock()
-		response = "The key: " + keyValAr[0] + " was set with the value: " + keyValAr[1]
 
 	default:
 		response = "Success!"
