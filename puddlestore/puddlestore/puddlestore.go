@@ -14,9 +14,9 @@ import (
 const TAPESTRY_NODES = 20
 const RAFT_NODES = 3
 
-type vguid string
-type aguid string
-type guid string
+type Vguid string
+type Aguid string
+type Guid string
 
 type PuddleNode struct {
 	tnodes      []*tapestry.Tapestry
@@ -25,9 +25,9 @@ type PuddleNode struct {
 	clientPaths map[uint64]string       // client id -> curpath
 	clients     map[uint64]*raft.Client // client id -> client
 
-	Local PuddleAddr
-
-	server *PuddleRPCServer
+	Local      PuddleAddr
+	raftClient *raft.Client
+	server     *PuddleRPCServer
 }
 
 type PuddleAddr struct {
@@ -65,11 +65,6 @@ func Start() (p *PuddleNode, err error) {
 	}
 	// -------------------------------------------------
 
-	// Create the root node ----------------------------
-	_, err = puddle.mkdir(&MkdirRequest{0, "/"})
-	if err != nil {
-		panic("Could not create root node")
-	}
 	/*
 		// vguid := randSeq(5)
 		root := CreateRootInode()
@@ -90,6 +85,28 @@ func Start() (p *PuddleNode, err error) {
 	// RPC server --------------------------------------
 	puddle.server = newPuddlestoreRPCServer(p)
 	puddle.Local = PuddleAddr{puddle.server.listener.Addr().String()}
+	// -------------------------------------------------
+
+	// Create puddle raft client
+	client, err := CreateClient(puddle.Local)
+	for err != nil {
+		client, err = CreateClient(puddle.Local)
+	}
+	// if err != nil {
+	//	panic("Could not create puddle raft client.")
+	//}
+	puddle.raftClient = puddle.clients[client.Id]
+	if puddle.raftClient == nil {
+		panic("Could not retrieve puddle raft client.")
+	}
+	// -------------------------------------------------
+
+	// Create the root node ----------------------------
+	_, err = puddle.mkdir(&MkdirRequest{puddle.raftClient.Id, "/"})
+	if err != nil {
+		panic("Could not create root node")
+	}
+	// -------------------------------------------------
 
 	fmt.Printf("Started puddlestore, listening at %v\n", puddle.server.listener.Addr().String())
 	// -------------------------------------------------
@@ -115,8 +132,8 @@ func (puddle *PuddleNode) getCurrentDir(id uint64) string {
 	return curdir
 }
 
-func (puddle *PuddleNode) getRootInode() *Inode {
-	inode, err := puddle.getInode("/")
+func (puddle *PuddleNode) getRootInode(id uint64) *Inode {
+	inode, err := puddle.getInode("/", id)
 	if err != nil {
 		panic("Root inode not found!")
 	}

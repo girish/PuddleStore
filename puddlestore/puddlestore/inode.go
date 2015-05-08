@@ -1,10 +1,12 @@
 package puddlestore
 
 import (
+	"../../raft/raft"
 	"../../tapestry/tapestry"
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"strings"
 )
 
 type Filetype int
@@ -21,7 +23,7 @@ type Inode struct {
 	name     string
 	filetype Filetype
 	size     uint32
-	indirect guid
+	indirect Guid
 }
 
 type Block struct {
@@ -51,76 +53,6 @@ func CreateBlock() *Block {
 	block := new(Block)
 	block.bytes = make([]byte, BLOCK_SIZE)
 	return block
-}
-
-func (puddle *PuddleNode) StoreInode(key string, inode *Inode) error {
-	bytes, err := inode.GobEncode()
-	if err != nil {
-		return err
-	}
-	err = tapestry.TapestryStore(puddle.getRandomTapestryNode(), key, bytes)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Gets an inode from a given path
-func (puddle *PuddleNode) getInode(key string) (*Inode, error) {
-	bytes, err := tapestry.TapestryGet(puddle.getRandomTapestryNode(), key)
-	if err != nil {
-		fmt.Println("ACA")
-		return nil, err
-	}
-
-	inode := new(Inode)
-	err = inode.GobDecode(bytes)
-	if err != nil {
-		fmt.Println(bytes)
-		return nil, err
-	}
-
-	return inode, nil
-}
-
-func (puddle *PuddleNode) removeKey(key string) error {
-	tapestryNodes, err := tapestry.TapestryLookup(puddle.getRandomTapestryNode(), key)
-	if err != nil {
-		return err
-	}
-	if len(tapestryNodes) == 0 {
-		return fmt.Errorf("Could not find node.")
-	}
-
-	success, err := tapestry.TapestryRemove(tapestryNodes[0], key)
-	if err != nil {
-		return err
-	}
-	if !success {
-		return fmt.Errorf("Could not remove node.")
-	}
-	return nil
-}
-
-func (puddle *PuddleNode) getInodeBlock(key string) ([]byte, error) {
-	tapestryNode := puddle.getRandomTapestryNode()
-	blockPath := fmt.Sprintf("%v:%v", key, "indirect")
-	dataBlock, err := tapestry.TapestryGet(tapestryNode, blockPath)
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
-	return dataBlock, nil
-}
-
-func (puddle *PuddleNode) StoreIndirectBlock(key string, block []byte) error {
-	err := tapestry.TapestryStore(puddle.getRandomTapestryNode(), key, block)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (d *Inode) GobEncode() ([]byte, error) {
@@ -161,4 +93,160 @@ func (d *Inode) GobDecode(buf []byte) error {
 		return err
 	}
 	return decoder.Decode(&d.indirect)
+}
+
+// Stores inode as data
+func (puddle *PuddleNode) StoreInode(path string, inode *Inode, id uint64) error {
+
+	hash := tapestry.Hash(path)
+
+	aguid := Aguid(hashToGuid(hash))
+	vguid := Vguid(randSeq(tapestry.DIGITS))
+
+	// Encode the inode
+	bytes, err := inode.GobEncode()
+	if err != nil {
+		return err
+	}
+
+	// Set the new aguid -> vguid pair with raft
+	err = puddle.setRaftVguid(aguid, vguid, id)
+	if err != nil {
+		return err
+	}
+
+	// Store data in tapestry with key: vguid
+	err = tapestry.TapestryStore(puddle.getRandomTapestryNode(), string(vguid), bytes)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Gets an inode from a given path
+func (puddle *PuddleNode) getInode(path string, id uint64) (*Inode, error) {
+
+	hash := tapestry.Hash(path)
+
+	aguid := Aguid(hashToGuid(hash))
+
+	// Get the vguid using raft
+	bytes, err := puddle.getTapestryData(aguid, id)
+
+	inode := new(Inode)
+	err = inode.GobDecode(bytes)
+	if err != nil {
+		fmt.Println(bytes)
+		return nil, err
+	}
+
+	return inode, nil
+}
+
+func (puddle *PuddleNode) getInodeBlock(key string, id uint64) ([]byte, error) {
+	blockPath := fmt.Sprintf("%v:%v", key, "indirect")
+	hash := tapestry.Hash(blockPath)
+	aguid := Aguid(hashToGuid(hash))
+
+	return puddle.getTapestryData(aguid, id)
+}
+
+func (puddle *PuddleNode) getTapestryData(aguid Aguid, id uint64) ([]byte, error) {
+	tapestryNode := puddle.getRandomTapestryNode()
+	response, err := puddle.getRaftVguid(aguid, id)
+	if err != nil {
+		return nil, err
+	}
+
+	ok := strings.Split(string(response), ":")[0]
+	vguid := strings.Split(string(response), ":")[1]
+	if ok != "SUCCESS" {
+		return nil, fmt.Errorf("Could not get raft vguid: %v", response)
+	}
+
+	data, err := tapestry.TapestryGet(tapestryNode, string(vguid))
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (puddle *PuddleNode) StoreIndirectBlock(inodePath string, block []byte,
+	id uint64) error {
+
+	blockPath := fmt.Sprintf("%v:%v", inodePath, "indirect")
+	hash := tapestry.Hash(blockPath)
+
+	aguid := Aguid(hashToGuid(hash))
+	vguid := Vguid(randSeq(tapestry.DIGITS))
+
+	// Set the new aguid -> vguid pair with raft
+	err := puddle.setRaftVguid(aguid, vguid, id)
+	if err != nil {
+		return err
+	}
+
+	err = tapestry.TapestryStore(puddle.getRandomTapestryNode(), string(vguid), block)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (puddle *PuddleNode) setRaftVguid(aguid Aguid, vguid Vguid, id uint64) error {
+	// Get the raft client struct
+	c, ok := puddle.clients[id]
+	if !ok {
+		panic("Attempted to get client from id, but not found.")
+	}
+
+	data := fmt.Sprintf("%v:%v", aguid, vguid)
+
+	res, err := c.SendRequestWithResponse(raft.SET, []byte(data))
+	if err != nil {
+		return err
+	}
+	if res.Status != raft.OK {
+		return fmt.Errorf("Could not get response from raft.")
+	}
+
+	return nil
+}
+
+func (puddle *PuddleNode) getRaftVguid(aguid Aguid, id uint64) (Vguid, error) {
+	// Get the raft client struct
+	c, ok := puddle.clients[id]
+	if !ok {
+		panic("Attempted to get client from id, but not found.")
+	}
+
+	res, err := c.SendRequestWithResponse(raft.GET, []byte(aguid))
+	if err != nil {
+		return "", err
+	}
+	if res.Status != raft.OK {
+		return "", fmt.Errorf("Could not get response from raft.")
+	}
+
+	return Vguid(res.Response), nil
+}
+
+func (puddle *PuddleNode) removeRaftVguid(aguid Aguid, id uint64) error {
+	// Get the raft client struct
+	c, ok := puddle.clients[id]
+	if !ok {
+		panic("Attempted to get client from id, but not found.")
+	}
+
+	res, err := c.SendRequestWithResponse(raft.REMOVE, []byte(aguid))
+	if err != nil {
+		return err
+	}
+	if res.Status != raft.OK {
+		return fmt.Errorf("Could not get response from raft.")
+	}
+
+	return nil
 }
