@@ -1,13 +1,13 @@
 package puddlestore
 
 import (
-	"fmt"
-	"strings"
 	"testing"
 	"time"
 )
 
-func TestInodeStorage(t *testing.T) {
+const EMPTY_FILE_LS = "\t./\t../"
+
+func TestLsAndMkdirFileAndCd(t *testing.T) {
 	puddle, err := Start()
 	if err != nil {
 		return
@@ -15,188 +15,139 @@ func TestInodeStorage(t *testing.T) {
 	}
 	time.Sleep(time.Millisecond * 500)
 
-	client := puddle.raftClient
-
-	inode := new(Inode)
-	inode.name = "Test inode"
-	inode.filetype = 1
-	inode.size = 666
-	inode.indirect = "F666"
-
-	inode2 := new(Inode)
-	inode2.name = "Test inode2"
-	inode2.filetype = 0
-	inode2.size = 66
-	inode2.indirect = "BEEF"
-
-	err = puddle.StoreInode("/path/one", inode, client.Id)
+	client, err := CreateClient(puddle.Local)
 	if err != nil {
-		t.Errorf("Error storing Inode: %v", err)
-		return
-	}
-	err = puddle.StoreInode("/second/path", inode2, client.Id)
-	if err != nil {
-		t.Errorf("Error storing Inode2: %v", err)
+		t.Errorf("Could not init client: %v", err)
 		return
 	}
 
-	sameInode, err := puddle.getInode("/path/one", client.Id)
-	if err != nil {
-		t.Errorf("Error geting Inode: %v", err)
+	var expected string
+
+	// >> ls
+	expected = EMPTY_FILE_LS
+	ls("", expected, client, t)
+
+	// >> ls doesnotexist
+	ls("doesnotexist", "", client, t)
+
+	// >> mkdir dir
+	mkdir("dir", false, client, t)
+
+	// >> ls
+	expected = EMPTY_FILE_LS + "\tdir/"
+	ls("", expected, client, t)
+
+	// >> mkdir dir2
+	mkdir("dir2", false, client, t)
+
+	// >> ls
+	expected = EMPTY_FILE_LS + "\tdir/\tdir2/"
+	ls("", expected, client, t)
+
+	// >> cd dir
+	cd("dir", false, client, t)
+
+	// >> ls
+	expected = EMPTY_FILE_LS
+	ls("", expected, client, t)
+
+	// >> ls /
+	expected = EMPTY_FILE_LS + "\tdir/\tdir2/"
+	ls("/", expected, client, t)
+
+	// >> mkfile file
+	mkfile("file", false, client, t)
+
+	// >> ls
+	expected = EMPTY_FILE_LS + "\tfile"
+	ls("", expected, client, t)
+
+	// >> mkdir dir2
+	mkdir("dir3", false, client, t)
+
+	// >> ls
+	expected = EMPTY_FILE_LS + "\tfile\tdir3/"
+	ls("", expected, client, t)
+
+	// >> ls /////
+	expected = EMPTY_FILE_LS + "\tdir/\tdir2/"
+	ls("/////", expected, client, t)
+
+	// >> ls //dir///
+	expected = EMPTY_FILE_LS + "\tfile\tdir3/"
+	ls("//dir///", expected, client, t)
+
+	// >> cd
+	cd("", false, client, t)
+
+	// >> cd doesnotexist
+	cd("doesnotexist", true, client, t)
+
+	// >> cd .. (we are at root)
+	cd("", false, client, t)
+}
+
+// --------------- WRAPPERS ---------------------------------------------------
+
+// Executes ls and assert the expected output is correct.
+// If 'expected' = "", it expects it to fail.
+func ls(path, expected string, client *Client, t *testing.T) {
+	elements, err := client.Ls(path)
+	if err != nil && expected != "" {
+		t.Errorf("'ls %v' threw an error: %v", path, err)
 		return
-	}
-	sameInode2, err := puddle.getInode("/second/path", client.Id)
-	if err != nil {
-		t.Errorf("Error geting Inode2: %v", err)
+	} else if err != nil && expected == "" {
 		return
 	}
 
-	if inode.name != sameInode.name {
-		t.Errorf("Name not the same\n\t%v != %v.", inode.name, sameInode.name)
-	}
-	if inode.filetype != sameInode.filetype {
-		t.Errorf("Name not the same\n\t%v != %v.", inode.filetype, sameInode.filetype)
-	}
-	if inode.size != sameInode.size {
-		t.Errorf("Name not the same\n\t%v != %v.", inode.size, sameInode.size)
-	}
-	if inode.indirect != sameInode.indirect {
-		t.Errorf("Name not the same\n\t%v != %v.", inode.indirect, sameInode.indirect)
+	if expected == "" {
+		t.Errorf("'ls %v' did not error out when it should've", path)
 	}
 
-	if inode2.name != sameInode2.name {
-		t.Errorf("Name not the same\n\t%v != %v.", inode2.name, sameInode2.name)
-	}
-	if inode2.filetype != sameInode2.filetype {
-		t.Errorf("Name not the same\n\t%v != %v.", inode2.filetype, sameInode2.filetype)
-	}
-	if inode2.size != sameInode2.size {
-		t.Errorf("Name not the same\n\t%v != %v.", inode2.size, sameInode2.size)
-	}
-	if inode2.indirect != sameInode2.indirect {
-		t.Errorf("Name not the same\n\t%v != %v.", inode2.indirect, sameInode2.indirect)
+	if elements != expected {
+		t.Errorf("'ls %v' did not give the expected result:\n%v != %v", path,
+			elements, expected)
 	}
 }
 
-func TestInodeReplacement(t *testing.T) {
-	puddle, err := Start()
-	if err != nil {
+func cd(path string, fail bool, client *Client, t *testing.T) {
+	err := client.Cd(path)
+	if err != nil && !fail {
+		t.Errorf("'cd %v' threw an error: %v", path, err)
 		return
-		t.Errorf("Could not init puddlestore: %v", err)
-	}
-	time.Sleep(time.Millisecond * 500)
-	client := puddle.raftClient
-
-	inode := new(Inode)
-	inode.name = "Test inode"
-	inode.filetype = 1
-	inode.size = 666
-	inode.indirect = "F666"
-
-	err = puddle.StoreInode("/path/one", inode, client.Id)
-	if err != nil {
-		t.Errorf("Error storing Inode: %v", err)
+	} else if err != nil && fail {
 		return
 	}
 
-	/*
-		err = puddle.removeKey("/path/one")
-		if err != nil {
-			t.Errorf("Error removing key \"/path/one\": %v", err)
-			return
-		}*/
-
-	inode2 := new(Inode)
-	inode2.name = "Imma replace u beaaach"
-	inode2.filetype = 1
-	inode2.size = 50
-	inode2.indirect = "DEAD"
-
-	err = puddle.StoreInode("/path/one", inode2, client.Id)
-	if err != nil {
-		t.Errorf("Error storing Inode: %v", err)
-		return
-	}
-
-	sameInode2, err := puddle.getInode("/path/one", client.Id)
-	if err != nil {
-		t.Errorf("Error geting Inode: %v", err)
-		return
-	}
-	if sameInode2 == nil {
-		t.Errorf("Something went wrong man")
-		return
-	}
-
-	if inode2.name != sameInode2.name {
-		t.Errorf("Name not the same\n\t%v != %v.", inode2.name, sameInode2.name)
-	}
-	if inode2.filetype != sameInode2.filetype {
-		t.Errorf("Name not the same\n\t%v != %v.", inode2.filetype, sameInode2.filetype)
-	}
-	if inode2.size != sameInode2.size {
-		t.Errorf("Name not the same\n\t%v != %v.", inode2.size, sameInode2.size)
-	}
-	if inode2.indirect != sameInode2.indirect {
-		t.Errorf("Name not the same\n\t%v != %v.", inode2.indirect, sameInode2.indirect)
+	if fail {
+		t.Errorf("'cd %v' did not error out when it should've", path)
 	}
 }
 
-func TestRaftMap(t *testing.T) {
-	puddle, err := Start()
-	if err != nil {
-		t.Errorf("Could not init puddlestore: %v", err)
+func mkdir(path string, fail bool, client *Client, t *testing.T) {
+	err := client.Mkdir(path)
+	if err != nil && !fail {
+		t.Errorf("'mkdir %v' threw an error: %v", path, err)
 		return
-	}
-	time.Sleep(time.Millisecond * 1000)
-
-	fmt.Println(puddle.Local)
-	client := puddle.raftClient
-
-	err = puddle.setRaftVguid("DEAD", "BEEF", client.Id)
-	if err != nil {
-		t.Errorf("Could set raft vguid: %v", err)
+	} else if err != nil && fail {
 		return
 	}
 
-	response, err := puddle.getRaftVguid("DEAD", client.Id)
-	if err != nil {
-		t.Errorf("Could get raft vguid: %v", err)
+	if fail {
+		t.Errorf("'mkdir %v' did not error out when it should've", path)
+	}
+}
+
+func mkfile(path string, fail bool, client *Client, t *testing.T) {
+	err := client.Mkfile(path)
+	if err != nil && !fail {
+		t.Errorf("'mkfile %v' threw an error: %v", path, err)
+		return
+	} else if err != nil && fail {
 		return
 	}
 
-	ok := strings.Split(string(response), ":")[0]
-	aguid := strings.Split(string(response), ":")[1]
-
-	if ok != "SUCCESS" {
-		t.Errorf("Could not get raft vguid: %v", response)
-	}
-
-	if aguid != "BEEF" {
-		t.Errorf("Raft didn't return the correct vguid. BEEF != %d", aguid)
-	}
-
-	// Reset aguid to another vguid
-	err = puddle.setRaftVguid("DEAD", "B004", client.Id)
-	if err != nil {
-		t.Errorf("Could set raft vguid: %v", err)
-		return
-	}
-
-	response, err = puddle.getRaftVguid("DEAD", client.Id)
-	if err != nil {
-		t.Errorf("Could get raft vguid: %v", err)
-		return
-	}
-
-	ok = strings.Split(string(response), ":")[0]
-	aguid = strings.Split(string(response), ":")[1]
-
-	if ok != "SUCCESS" {
-		t.Errorf("Could not get raft vguid: %v", response)
-	}
-
-	if aguid != "B004" {
-		t.Errorf("Raft didn't return the correct vguid. B004 != %d", aguid)
+	if fail {
+		t.Errorf("'mkifle %v' did not error out when it should've", path)
 	}
 }

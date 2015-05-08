@@ -36,7 +36,16 @@ func (shell *Shell) interact(commands map[string]command) {
 	in := bufio.NewReader(os.Stdin)
 LOOP:
 	for {
-		fmt.Print("> ")
+		if shell.c != nil {
+			curdir, err := shell.c.Pwd()
+			if err != nil {
+				fmt.Print("puddle:$> ")
+			} else {
+				fmt.Printf("puddle:%v$> ", curdir)
+			}
+		} else {
+			fmt.Print("puddle:$> ")
+		}
 		input, err := in.ReadString('\n')
 		if err == io.EOF {
 			break

@@ -44,6 +44,12 @@ func (server *PuddleRPCServer) ConnectImpl(req *ConnectRequest, rep *ConnectRepl
 	return err
 }
 
+func (server *PuddleRPCServer) PwdImpl(req *PwdRequest, rep *PwdReply) error {
+	rvreply, err := server.node.pwd(req)
+	*rep = rvreply
+	return err
+}
+
 func (server *PuddleRPCServer) LsImpl(req *LsRequest, rep *LsReply) error {
 	rvreply, err := server.node.ls(req)
 	*rep = rvreply
@@ -68,8 +74,26 @@ func (server *PuddleRPCServer) RmdirImpl(req *RmdirRequest, rep *RmdirReply) err
 	return err
 }
 
-func (server *PuddleRPCServer) MkfileImpl(req *MkdirRequest, rep *MkdirReply) error {
+func (server *PuddleRPCServer) MkfileImpl(req *MkfileRequest, rep *MkfileReply) error {
 	rvreply, err := server.node.mkfile(req)
+	*rep = rvreply
+	return err
+}
+
+func (server *PuddleRPCServer) RmfileImpl(req *RmfileRequest, rep *RmfileReply) error {
+	rvreply, err := server.node.rmfile(req)
+	*rep = rvreply
+	return err
+}
+
+func (server *PuddleRPCServer) WritefileImpl(req *WritefileRequest, rep *WritefileReply) error {
+	rvreply, err := server.node.writefile(req)
+	*rep = rvreply
+	return err
+}
+
+func (server *PuddleRPCServer) CatImpl(req *CatRequest, rep *CatReply) error {
+	rvreply, err := server.node.cat(req)
 	*rep = rvreply
 	return err
 }

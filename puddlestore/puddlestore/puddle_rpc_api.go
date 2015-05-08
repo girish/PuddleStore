@@ -28,6 +28,26 @@ func ConnectRPC(remotenode *PuddleAddr, request ConnectRequest) (*ConnectReply, 
 	return &reply, nil
 }
 
+type PwdRequest struct {
+	ClientId uint64
+}
+
+type PwdReply struct {
+	Ok   bool
+	Path string
+}
+
+func pwdRPC(remotenode *PuddleAddr, request PwdRequest) (*PwdReply, error) {
+	var reply PwdReply
+
+	err := makeRemoteCall(remotenode, "PwdImpl", request, &reply)
+	if err != nil {
+		return nil, err
+	}
+
+	return &reply, nil
+}
+
 type LsRequest struct {
 	ClientId uint64
 	Path     string
@@ -123,7 +143,73 @@ func mkfileRPC(remotenode *PuddleAddr, request MkfileRequest) (*MkfileReply, err
 
 	err := makeRemoteCall(remotenode, "MkfileImpl", request, &reply)
 	if err != nil {
-		fmt.Println(err)
+		return nil, err
+	}
+
+	return &reply, nil
+}
+
+type RmfileRequest struct {
+	ClientId uint64
+	Path     string
+}
+
+type RmfileReply struct {
+	Ok bool
+}
+
+func rmfileRPC(remotenode *PuddleAddr, request RmfileRequest) (*RmfileReply, error) {
+	var reply RmfileReply
+
+	err := makeRemoteCall(remotenode, "RmfileImpl", request, &reply)
+	if err != nil {
+		return nil, err
+	}
+
+	return &reply, nil
+}
+
+type WritefileRequest struct {
+	ClientId uint64
+	Path     string
+	Location uint32
+	Buffer   []byte
+}
+
+type WritefileReply struct {
+	Ok      bool
+	Written uint32
+}
+
+func writefileRPC(remotenode *PuddleAddr, request WritefileRequest) (*WritefileReply, error) {
+	var reply WritefileReply
+
+	err := makeRemoteCall(remotenode, "WritefileImpl", request, &reply)
+	if err != nil {
+		return nil, err
+	}
+
+	return &reply, nil
+}
+
+type CatRequest struct {
+	ClientId uint64
+	Path     string
+	Location uint32
+	Count    uint32
+}
+
+type CatReply struct {
+	Ok     bool
+	Read   uint32
+	Buffer []byte
+}
+
+func catRPC(remotenode *PuddleAddr, request CatRequest) (*CatReply, error) {
+	var reply CatReply
+
+	err := makeRemoteCall(remotenode, "CatImpl", request, &reply)
+	if err != nil {
 		return nil, err
 	}
 
