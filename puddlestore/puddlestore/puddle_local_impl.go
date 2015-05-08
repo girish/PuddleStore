@@ -37,36 +37,33 @@ func (puddle *PuddleNode) ls(req *LsRequest) (LsReply, error) {
 	var elements [FILES_PER_INODE + 2]string
 	numElements := 2 // Leave 2 spots for '.' and '..'
 
-	curdir, ok := puddle.clientPaths[req.ClientId]
+	path := req.Path
 	clientId := req.ClientId
-	// fmt.Printf("Lookingg for %v in clientPaths. Found %v\n", req.ClientId, curdir)
-	if !ok {
-		panic("Did not found the current path of a client that is supposed to be registered")
+	var ok bool
+
+	if path == "" {
+		path, ok = puddle.clientPaths[req.ClientId]
+		if !ok {
+			panic("Did not found the current path of a client that is supposed to be registered")
+		}
 	}
 
+	// fmt.Printf("Lookingg for %v in clientPaths. Found %v\n", req.ClientId, curdir)
+
 	// First, get the current directory inode
-	inode, err := puddle.getInode(curdir, clientId)
+	inode, err := puddle.getInode(path, clientId)
 	if err != nil {
 		return LsReply{false, ""}, err
 	}
 
-	// Empty file dir (debugging)
-	/*if inode.size == 0 {
-		elements[0] = "No files, but hey, it got got in."
-		// reply.elements = makeString(elements)
-		reply.Elements = makeString(elements)
-		reply.Ok = true
-		return reply, nil
-	}*/
-
 	// Second, get the data block from this inode.
-	dataBlock, err := puddle.getInodeBlock(curdir, clientId)
+	dataBlock, err := puddle.getInodeBlock(path, clientId)
 	if err != nil {
 		return LsReply{false, ""}, err
 	}
 
 	// Then we get the name of all the block inodes
-	dirInodes, err := puddle.getBlockInodes(curdir, inode, dataBlock, clientId)
+	dirInodes, err := puddle.getBlockInodes(path, inode, dataBlock, clientId)
 	if err != nil {
 		return LsReply{false, ""}, err
 	}
@@ -93,22 +90,51 @@ func (puddle *PuddleNode) cd(req *CdRequest) (CdReply, error) {
 	clientId := req.ClientId
 
 	if len(path) == 0 {
-		return CdReply{false}, fmt.Errorf("Empty path")
+		puddle.clientPaths[req.ClientId] = "/"
+		reply.Ok = true
+		return reply, nil
 	}
 
-	// TODO: Support relative paths.
 	if path[0] != '/' {
-		panic("not valid path")
+		path = puddle.getCurrentDir(clientId) + "/" + path
 	}
+	path = removeExcessSlashes(path)
+	length := len(path)
+	fmt.Println("CD path:", path)
 
-	_, err := puddle.getInode(path, clientId)
+	lastSlash := strings.LastIndex(path, "/")
 
-	if err != nil { // Path does not exist.
-		return CdReply{false}, err
+	if length > 1 && path[length-1] == '.' && path[length-2] == '.' {
+		if lastSlash == 0 {
+			puddle.clientPaths[req.ClientId] = "/"
+		} else {
+			splits := strings.Split(path, "/")
+			if len(splits) <= 3 {
+				puddle.clientPaths[req.ClientId] = "/"
+			} else {
+				path = strings.Join(splits[:len(splits)-2], "/")
+				fmt.Println("path:", path)
+				puddle.clientPaths[req.ClientId] = path
+			}
+		}
+	} else if path[length-1] == '.' { // Just stay where you are
+		if lastSlash == 0 {
+			puddle.clientPaths[req.ClientId] = "/"
+		} else {
+			puddle.clientPaths[req.ClientId] = path[:lastSlash]
+		}
+	} else {
+
+		fmt.Println(path)
+		_, err := puddle.getInode(path, clientId)
+
+		if err != nil { // Path does not exist.
+			return CdReply{false}, fmt.Errorf("Path does not exist")
+		}
+
+		// Changes the current path of the client
+		puddle.clientPaths[req.ClientId] = path
 	}
-
-	// Changes the current path of the client
-	puddle.clientPaths[req.ClientId] = path
 
 	reply.Ok = true
 	return reply, nil
@@ -119,16 +145,27 @@ func (puddle *PuddleNode) mkdir(req *MkdirRequest) (MkdirReply, error) {
 	reply := MkdirReply{}
 
 	path := req.Path
+	length := len(path)
 	clientId := req.ClientId
 
-	if len(path) == 0 {
+	if length == 0 {
 		return reply, fmt.Errorf("Empty path")
+	}
+	if (length > 2 && path[length-1] == '.' && path[length-2] == '.') ||
+		path[length-1] == '.' {
+		return reply, fmt.Errorf("There already exists a file/dir with that name.")
 	}
 
 	dirInode, name, fullPath, dirPath, err := puddle.dir_namev(path, clientId)
 	if err != nil {
 		fmt.Println(err)
 		return reply, err
+	}
+
+	// File we are about to make should not exist.
+	_, err = puddle.getInode(fullPath, clientId)
+	if err == nil {
+		return reply, fmt.Errorf("There already exists a file/dir with that name.")
 	}
 
 	// This is the root node creation.
@@ -313,6 +350,77 @@ func (puddle *PuddleNode) mkfile(req *MkfileRequest) (MkfileReply, error) {
 	return reply, nil
 }
 
+func (puddle *PuddleNode) rmdir(req *RmdirRequest) (RmdirReply, error) {
+	reply := RmdirReply{}
+
+	path := req.Path
+	length := len(path)
+	clientId := req.ClientId
+
+	if (length > 2 && path[length-1] == '.' && path[length-2] == '.') ||
+		path[length-1] == '.' {
+		return reply, fmt.Errorf("Invalid.")
+	}
+
+	dirInode, _, fullPath, dirPath, err := puddle.dir_namev(path, clientId)
+	if err != nil {
+		return reply, fmt.Errorf("Path does not exist")
+	}
+
+	rmInode, err := puddle.getInode(fullPath, clientId)
+	if err != nil {
+		return reply, fmt.Errorf("Directory does not exist")
+	}
+
+	if rmInode.size != 0 {
+		return reply, fmt.Errorf("Directory is not empty")
+	}
+
+	dirBlock, err := puddle.getInodeBlock(dirPath, clientId)
+	if err != nil {
+		fmt.Println(err)
+		return reply, err
+	}
+
+	// Get rmInode's vguid
+	hash := tapestry.Hash(fullPath)
+	aguid := Aguid(hashToGuid(hash))
+	vguid, err := puddle.getRaftVguid(aguid, clientId)
+	if err != nil {
+		return reply, err
+	}
+
+	// Get that vguif from the block and zero out the contents
+	pointer, err := puddle.lookupInode(dirBlock, vguid, dirInode.size, clientId)
+	if err != nil {
+		return reply, err
+	}
+	// MakeZeros(dirBlock, pointer)
+	RemoveEntryFromBlock(dirBlock, pointer, dirInode.size)
+	dirInode.size -= tapestry.DIGITS
+
+	// Remove anode -> vnode mapping from raft.
+	err = puddle.removeRaftVguid(aguid, clientId)
+	if err != nil {
+		return reply, err
+	}
+
+	// Store the modified dir block
+	err = puddle.StoreIndirectBlock(dirPath, dirBlock, clientId)
+	if err != nil {
+		return reply, err
+	}
+
+	// Store the modified dir inode
+	err = puddle.StoreInode(dirPath, dirInode, clientId)
+	if err != nil {
+		return reply, err
+	}
+
+	reply.Ok = true
+	return reply, nil
+}
+
 func (puddle *PuddleNode) getBlockInodes(path string, inode *Inode,
 	data []byte, id uint64) ([]*Inode, error) {
 
@@ -360,6 +468,8 @@ func (puddle *PuddleNode) dir_namev(pathname string, id uint64) (*Inode, string,
 		panic("What should go here?")
 	}
 
+	path = removeExcessSlashes(path)
+
 	if dirPath[0] != '/' {
 		dirPath = puddle.getCurrentDir(id) + "/" + dirPath
 	}
@@ -370,7 +480,10 @@ func (puddle *PuddleNode) dir_namev(pathname string, id uint64) (*Inode, string,
 		return nil, "", "", "", err
 	}
 
-	return dirInode, name, dirPath + "/" + name, dirPath, nil
+	dirPath = removeExcessSlashes(dirPath)
+	fullPath := removeExcessSlashes(dirPath + "/" + name)
+
+	return dirInode, name, fullPath, dirPath, nil
 }
 
 func removeExcessSlashes(path string) string {
@@ -447,6 +560,24 @@ func ByteIntoAguid(bytes []byte, start uint32) Aguid {
 		aguid += strconv.FormatUint(uint64(bytes[start+i]), tapestry.BASE)
 	}
 	return Aguid(strings.ToUpper(aguid))
+}
+
+func MakeZeros(bytes []byte, start uint32) {
+	for i := uint32(0); i < tapestry.DIGITS; i++ {
+		bytes[start+i] = 0
+	}
+}
+
+// Removes an entry from a directory block. If it not the last entry,
+// It moves and replaces the last entry with the removing entry.
+func RemoveEntryFromBlock(bytes []byte, start uint32, size uint32) {
+	if start == size-tapestry.DIGITS { // Last one
+		MakeZeros(bytes, start)
+	} else {
+		for i := uint32(0); i < tapestry.DIGITS; i++ {
+			bytes[start+i] = bytes[size-tapestry.DIGITS+i]
+		}
+	}
 }
 
 func makeString(elements [FILES_PER_INODE + 2]string) string {

@@ -62,6 +62,12 @@ func (server *PuddleRPCServer) MkdirImpl(req *MkdirRequest, rep *MkdirReply) err
 	return err
 }
 
+func (server *PuddleRPCServer) RmdirImpl(req *RmdirRequest, rep *RmdirReply) error {
+	rvreply, err := server.node.rmdir(req)
+	*rep = rvreply
+	return err
+}
+
 func (server *PuddleRPCServer) MkfileImpl(req *MkdirRequest, rep *MkdirReply) error {
 	rvreply, err := server.node.mkfile(req)
 	*rep = rvreply
