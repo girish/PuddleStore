@@ -68,12 +68,15 @@ func (puddle *PuddleNode) ls(req *LsRequest) (LsReply, error) {
 		return LsReply{false, ""}, err
 	}
 
-	elements[0] = "."
-	elements[1] = ".."
+	elements[0] = "./"
+	elements[1] = "../"
 	size := inode.size / tapestry.DIGITS
 	fmt.Println("Size in ls:", size)
 	for i := uint32(2); i < size+2; i++ {
 		elements[numElements] = dirInodes[i-2].name
+		if dirInodes[i-2].filetype == DIR {
+			elements[numElements] += "/"
+		}
 		numElements++
 	}
 
@@ -126,10 +129,13 @@ func (puddle *PuddleNode) cd(req *CdRequest) (CdReply, error) {
 	} else {
 
 		fmt.Println(path)
-		_, err := puddle.getInode(path, clientId)
+		cdInode, err := puddle.getInode(path, clientId)
 
 		if err != nil { // Path does not exist.
-			return CdReply{false}, fmt.Errorf("Path does not exist")
+			return CdReply{false}, fmt.Errorf("Path does not exist.")
+		}
+		if cdInode.filetype != DIR {
+			return CdReply{false}, fmt.Errorf("Cannot cd into a file.")
 		}
 
 		// Changes the current path of the client
@@ -177,35 +183,18 @@ func (puddle *PuddleNode) mkdir(req *MkdirRequest) (MkdirReply, error) {
 
 		// Set block paths for the indirect block and dot references
 		blockPath := fmt.Sprintf("%v:%v", fullPath, "indirect") // this will be '/:indirect'
-		// dotPath := fullPath                                     // . -> '/'
-		// dotdotPath := dirPath                                   // .. -> '/'
 
 		// Hash the dot references to put them on the indirect block.
-		// newDirInodeHash := tapestry.Hash(blockPath)
 		blockHash := tapestry.Hash(blockPath)
-		// dotHash := tapestry.Hash(dotPath)
-		// dotdotHash := tapestry.Hash(dotdotPath)
-
-		// Insert the dot hashes into the new indirect block. TODO: This should be the AGUID, not VGUID, use raft
-		// IdIntoByte(newDirBlock.bytes, &dotHash, 0)
-		// IdIntoByte(newDirBlock.bytes, &dotdotHash, tapestry.DIGITS)
 
 		// Save the root Inode indirect block in tapestry
 		puddle.StoreIndirectBlock(fullPath, newDirBlock.bytes, clientId)
-		// tapestry.TapestryStore(puddle.getRandomTapestryNode(), blockPath, newDirBlock.bytes)
 
 		newDirInode.indirect = hashToGuid(blockHash)
 		fmt.Println(blockHash, "->", newDirInode.indirect)
 
 		// Save the root Inode
 		puddle.StoreInode(fullPath, newDirInode, clientId)
-		/*encodedNewDirNode, err := newDirInode.GobEncode()
-		if err != nil {
-			fmt.Println(err)
-			return reply, err
-		}
-		tapestry.TapestryStore(puddle.getRandomTapestryNode(), fullpath, encodedNewDirNode)
-		*/
 
 	} else {
 		// Get indirect block from the directory that is going to create
@@ -221,23 +210,15 @@ func (puddle *PuddleNode) mkdir(req *MkdirRequest) (MkdirReply, error) {
 		newDirBlock := CreateBlock()
 
 		// Declare block paths
-		// dirBlockPath := fmt.Sprintf("%v:%v", dirPath, "indirect")
 		blockPath := fmt.Sprintf("%v:%v", fullPath, "indirect")
 
 		// Get hashes
-		// newDirBlockHash := tapestry.Hash(blockPath)
 		newDirInodeHash := tapestry.Hash(fullPath)
-		//dotHash := tapestry.Hash(dotPath)
-		//dotdotHash := tapestry.Hash(dotdotPath)
 
 		fmt.Println("Dirpath: %v", dirPath)
 		fmt.Println("Fullpath: %v", fullPath)
 		fmt.Println("blockPath: %v", blockPath)
 		fmt.Println("newDirInodeHAsh: %v", newDirInodeHash)
-
-		// Write '.' and '..' to new dir
-		//IdIntoByte(newDirBlock.bytes, &dotHash, 0)
-		//IdIntoByte(newDirBlock.bytes, &dotdotHash, tapestry.DIGITS)
 
 		// Write the new dir to the old dir and increase its size
 		IdIntoByte(dirBlock, &newDirInodeHash, int(dirInode.size))
@@ -255,23 +236,6 @@ func (puddle *PuddleNode) mkdir(req *MkdirRequest) (MkdirReply, error) {
 		// Encode both inodes
 		puddle.StoreInode(dirPath, dirInode, clientId)
 		puddle.StoreInode(fullPath, newDirInode, clientId)
-		/*
-			encodedDirNode, err := dirInode.GobEncode()
-			if err != nil {
-				fmt.Println(err)
-				return reply, err
-			}
-			encodedNewDirNode, err := newDirInode.GobEncode()
-			if err != nil {
-				fmt.Println(err)
-				return reply, err
-			}
-
-			// Save both inodes in tapestry
-			tapestry.TapestryRemove(puddle.getRandomTapestryNode(), dirpath)
-			tapestry.TapestryStore(puddle.getRandomTapestryNode(), dirpath, encodedDirNode)
-			tapestry.TapestryStore(puddle.getRandomTapestryNode(), fullpath, encodedNewDirNode)
-		*/
 	}
 
 	reply.Ok = true
@@ -298,8 +262,7 @@ func (puddle *PuddleNode) mkfile(req *MkfileRequest) (MkfileReply, error) {
 
 	// This is the root node creation.
 	if dirInode == nil {
-		panic("From mkfile, does this mean the root DNE or that the directory where we
-		want to create this DNE?")
+		panic("Root file does not exist")
 	} else {
 		// Get indirect block from the directory that is going to create
 		// the node
@@ -310,40 +273,29 @@ func (puddle *PuddleNode) mkfile(req *MkfileRequest) (MkfileReply, error) {
 		}
 
 		// Create new inode and block
-		newDirInode := CreateFileInode(name)
-		newDirBlock := CreateBlock()
+		newFileInode := CreateFileInode(name)
+		newFileBlock := CreateBlock()
 
-		// Declare block paths
-		// dirBlockPath := fmt.Sprintf("%v:%v", dirPath, "indirect")
-		blockPath := fmt.Sprintf("%v:%v", fullPath, "indirect")
-		//not a dir
-		// dotPath := fullPath
-		// dotdotPath := dirPath
-
-		// Get hashes << porque el blockPath?
-		newDirInodeHash := tapestry.Hash(blockPath)
-		//dotHash := tapestry.Hash(dotPath)
-		//dotdotHash := tapestry.Hash(dotdotPath)
-
-		fmt.Println("Dirpath: %v", dirPath)
-		fmt.Println("Fullpath: %v", fullPath)
-		fmt.Println("blockPath: %v", blockPath)
-
-		// Write '.' and '..' to new dir
-		//IdIntoByte(newDirBlock.bytes, &dotHash, 0)
-		//IdIntoByte(newDirBlock.bytes, &dotdotHash, tapestry.DIGITS)
+		// Get hashes
+		newFileInodeHash := tapestry.Hash(fullPath)
 
 		// Write the new dir to the old dir and increase its size
-		IdIntoByte(dirBlock, &newDirInodeHash, int(dirInode.size))
+		IdIntoByte(dirBlock, &newFileInodeHash, int(dirInode.size))
 		dirInode.size += tapestry.DIGITS
 
+		bytes := make([]byte, tapestry.DIGITS)
+		IdIntoByte(bytes, &newFileInodeHash, 0)
+		newFileInode.indirect = Guid(ByteIntoAguid(bytes, 0))
+		fmt.Println("\n\n\n\n\n\n", newFileInodeHash, "->", newFileInode.indirect)
+
 		// Save both blocks in tapestry
-		puddle.StoreIndirectBlock(fullPath, newDirBlock.bytes, clientId)
-		puddle.StoreIndirectBlock(dirPath, newDirBlock.bytes, clientId)
+		puddle.StoreIndirectBlock(fullPath, newFileBlock.bytes, clientId)
+		puddle.StoreIndirectBlock(dirPath, dirBlock, clientId)
 
 		// Encode both inodes
 		puddle.StoreInode(dirPath, dirInode, clientId)
-		puddle.StoreInode(fullPath, newDirInode, clientId)
+		puddle.StoreInode(fullPath, newFileInode, clientId)
+
 	}
 
 	reply.Ok = true
@@ -372,8 +324,83 @@ func (puddle *PuddleNode) rmdir(req *RmdirRequest) (RmdirReply, error) {
 		return reply, fmt.Errorf("Directory does not exist")
 	}
 
+	if rmInode.filetype != DIR {
+		return reply, fmt.Errorf("Cannot remove something that is not a dir.")
+	}
+
 	if rmInode.size != 0 {
 		return reply, fmt.Errorf("Directory is not empty")
+	}
+
+	dirBlock, err := puddle.getInodeBlock(dirPath, clientId)
+	if err != nil {
+		fmt.Println(err)
+		return reply, err
+	}
+
+	// Get rmInode's vguid
+	hash := tapestry.Hash(fullPath)
+	aguid := Aguid(hashToGuid(hash))
+	vguid, err := puddle.getRaftVguid(aguid, clientId)
+	if err != nil {
+		return reply, err
+	}
+
+	// Get that vguif from the block and zero out the contents
+	pointer, err := puddle.lookupInode(dirBlock, vguid, dirInode.size, clientId)
+	if err != nil {
+		return reply, err
+	}
+	// MakeZeros(dirBlock, pointer)
+	RemoveEntryFromBlock(dirBlock, pointer, dirInode.size)
+	dirInode.size -= tapestry.DIGITS
+
+	// Remove anode -> vnode mapping from raft.
+	err = puddle.removeRaftVguid(aguid, clientId)
+	if err != nil {
+		return reply, err
+	}
+
+	// Store the modified dir block
+	err = puddle.StoreIndirectBlock(dirPath, dirBlock, clientId)
+	if err != nil {
+		return reply, err
+	}
+
+	// Store the modified dir inode
+	err = puddle.StoreInode(dirPath, dirInode, clientId)
+	if err != nil {
+		return reply, err
+	}
+
+	reply.Ok = true
+	return reply, nil
+}
+
+func (puddle *PuddleNode) rmfile(req *RmfileRequest) (RmfileReply, error) {
+	reply := RmfileReply{}
+
+	path := req.Path
+	length := len(path)
+	clientId := req.ClientId
+
+	if (length > 2 && path[length-1] == '.' && path[length-2] == '.') ||
+		path[length-1] == '.' {
+		return reply, fmt.Errorf("Invalid.")
+	}
+
+	dirInode, _, fullPath, dirPath, err := puddle.dir_namev(path, clientId)
+	if err != nil {
+		return reply, fmt.Errorf("Path does not exist")
+	}
+
+	rmInode, err := puddle.getInode(fullPath, clientId)
+	if err != nil {
+		return reply, fmt.Errorf("File does not exist")
+	}
+
+	if rmInode.filetype != FILE {
+		return reply, fmt.Errorf("Cannot remove something that is not a file.")
 	}
 
 	dirBlock, err := puddle.getInodeBlock(dirPath, clientId)

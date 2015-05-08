@@ -107,7 +107,7 @@ func (c *Client) Rmdir(path string) (err error) {
 	return nil
 }
 
-func (c *Client) Mkfile(path string) (err error) {
+func (c *Client) Cat(path string) (err error) {
 	request := MkfileRequest{c.Id, path}
 
 	remoteAddr := c.PuddleServ
@@ -116,6 +116,57 @@ func (c *Client) Mkfile(path string) (err error) {
 
 	if err != nil {
 		fmt.Println(err)
+		return
+	}
+	if !reply.Ok {
+		fmt.Errorf("Could not create file")
+	}
+
+	return nil
+}
+
+func (c *Client) Mkfile(path string) (err error) {
+	request := MkfileRequest{c.Id, path}
+
+	remoteAddr := c.PuddleServ
+
+	reply, err := mkfileRPC(&remoteAddr, request)
+
+	if err != nil {
+		return
+	}
+	if !reply.Ok {
+		fmt.Errorf("Could not create file")
+	}
+
+	return nil
+}
+
+func (c *Client) Rmfile(path string) (err error) {
+	request := RmfileRequest{c.Id, path}
+
+	remoteAddr := c.PuddleServ
+
+	reply, err := rmfileRPC(&remoteAddr, request)
+
+	if err != nil {
+		return
+	}
+	if !reply.Ok {
+		fmt.Errorf("Could not create file")
+	}
+
+	return nil
+}
+
+func (c *Client) Writefile(path string) (err error) {
+	request := MkfileRequest{c.Id, path}
+
+	remoteAddr := c.PuddleServ
+
+	reply, err := mkfileRPC(&remoteAddr, request)
+
+	if err != nil {
 		return
 	}
 	if !reply.Ok {

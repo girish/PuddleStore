@@ -2,8 +2,8 @@ package raft
 
 import (
 	"fmt"
-	"strings"
 	"math/rand"
+	"strings"
 	"testing"
 	"time"
 )
@@ -238,7 +238,7 @@ func TestFileMap(t *testing.T) {
 		t.Errorf("Client not really registered")
 	}
 	retries := 0
-	RETRY:
+RETRY:
 	err = client.SendRequest(HASH_CHAIN_INIT, []byte("tacos"))
 	if err != nil {
 		retries++
@@ -375,7 +375,7 @@ func TestFileMapConsistency(t *testing.T) {
 		t.Errorf("Client not really registered")
 	}
 	retries := 0
-	RETRY:
+RETRY:
 	err = client.SendRequest(HASH_CHAIN_INIT, []byte("tacos"))
 	if err != nil {
 		retries++
@@ -438,7 +438,7 @@ func TestFileMapConsistency(t *testing.T) {
 	}
 	//Now we make sure they are not there
 	key = ""
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 15; i++ {
 		key = key + string(ascii)
 		reply, _ := client.SendRequestWithResponse(GET, []byte("hello"))
 		if reply.Status != OK {
@@ -453,7 +453,6 @@ func TestFileMapConsistency(t *testing.T) {
 	}
 
 }
-
 
 func checkLogOrder(nodes []*RaftNode) bool {
 	for _, n := range nodes {
@@ -588,8 +587,6 @@ func randSeq(n int) string {
 	}
 	return string(b)
 }
-
-
 
 /*
 func checkMajority(leader *RaftNode, nodes []*RaftNode) bool {

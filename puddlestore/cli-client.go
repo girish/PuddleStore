@@ -52,14 +52,40 @@ func mkdir(shell *Shell, args []string) error {
 	return nil
 }
 
-<<<<<<< HEAD
-func mkfile(shell *Shell, args []string) error {
-	fmt.Println("Running mkfile with", args[1])
-	err := shell.c.Mkfile(args[1])
-=======
 func rmdir(shell *Shell, args []string) error {
 	err := shell.c.Rmdir(args[1])
->>>>>>> 0f76b02... Implements rmdir
+	if err != nil {
+		fmt.Println(err)
+	}
+	return nil
+}
+
+func cat(shell *Shell, args []string) error {
+	err := shell.c.Cat(args[1])
+	if err != nil {
+		fmt.Println(err)
+	}
+	return nil
+}
+
+func mkfile(shell *Shell, args []string) error {
+	err := shell.c.Mkfile(args[1])
+	if err != nil {
+		fmt.Println(err)
+	}
+	return nil
+}
+
+func rmfile(shell *Shell, args []string) error {
+	err := shell.c.Rmfile(args[1])
+	if err != nil {
+		fmt.Println(err)
+	}
+	return nil
+}
+
+func writefile(shell *Shell, args []string) error {
+	err := shell.c.Writefile(args[1])
 	if err != nil {
 		fmt.Println(err)
 	}

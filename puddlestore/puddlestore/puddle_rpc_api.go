@@ -123,7 +123,26 @@ func mkfileRPC(remotenode *PuddleAddr, request MkfileRequest) (*MkfileReply, err
 
 	err := makeRemoteCall(remotenode, "MkfileImpl", request, &reply)
 	if err != nil {
-		fmt.Println(err)
+		return nil, err
+	}
+
+	return &reply, nil
+}
+
+type RmfileRequest struct {
+	ClientId uint64
+	Path     string
+}
+
+type RmfileReply struct {
+	Ok bool
+}
+
+func rmfileRPC(remotenode *PuddleAddr, request RmfileRequest) (*RmfileReply, error) {
+	var reply RmfileReply
+
+	err := makeRemoteCall(remotenode, "RmfileImpl", request, &reply)
+	if err != nil {
 		return nil, err
 	}
 
