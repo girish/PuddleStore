@@ -144,6 +144,20 @@ func (puddle *PuddleNode) getInode(path string, id uint64) (*Inode, error) {
 	return inode, nil
 }
 
+func (puddle *PuddleNode) getInodeFromAguid(aguid Aguid, id uint64) (*Inode, error) {
+	// Get the vguid using raft
+	bytes, err := puddle.getTapestryData(aguid, id)
+
+	inode := new(Inode)
+	err = inode.GobDecode(bytes)
+	if err != nil {
+		fmt.Println(bytes)
+		return nil, err
+	}
+
+	return inode, nil
+}
+
 func (puddle *PuddleNode) getInodeBlock(key string, id uint64) ([]byte, error) {
 	blockPath := fmt.Sprintf("%v:%v", key, "indirect")
 	hash := tapestry.Hash(blockPath)
