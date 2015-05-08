@@ -22,7 +22,6 @@ func ConnectRPC(remotenode *PuddleAddr, request ConnectRequest) (*ConnectReply, 
 
 	err := makeRemoteCall(remotenode, "ConnectImpl", request, &reply)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 
@@ -44,7 +43,6 @@ func lsRPC(remotenode *PuddleAddr, request LsRequest) (*LsReply, error) {
 
 	err := makeRemoteCall(remotenode, "LsImpl", request, &reply)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 
@@ -65,7 +63,6 @@ func cdRPC(remotenode *PuddleAddr, request CdRequest) (*CdReply, error) {
 
 	err := makeRemoteCall(remotenode, "CdImpl", request, &reply)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 
@@ -81,6 +78,36 @@ type MkdirReply struct {
 	Ok bool
 }
 
+func mkdirRPC(remotenode *PuddleAddr, request MkdirRequest) (*MkdirReply, error) {
+	var reply MkdirReply
+
+	err := makeRemoteCall(remotenode, "MkdirImpl", request, &reply)
+	if err != nil {
+		return nil, err
+	}
+
+	return &reply, nil
+}
+
+type RmdirRequest struct {
+	ClientId uint64
+	Path     string
+}
+
+type RmdirReply struct {
+	Ok bool
+}
+
+func rmdirRPC(remotenode *PuddleAddr, request RmdirRequest) (*RmdirReply, error) {
+	var reply RmdirReply
+
+	err := makeRemoteCall(remotenode, "RmdirImpl", request, &reply)
+	if err != nil {
+		return nil, err
+	}
+
+	return &reply, nil
+}
 
 type MkfileRequest struct {
 	ClientId uint64
@@ -89,18 +116,6 @@ type MkfileRequest struct {
 
 type MkfileReply struct {
 	Ok bool
-}
-
-func mkdirRPC(remotenode *PuddleAddr, request MkdirRequest) (*MkdirReply, error) {
-	var reply MkdirReply
-
-	err := makeRemoteCall(remotenode, "MkdirImpl", request, &reply)
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
-
-	return &reply, nil
 }
 
 func mkfileRPC(remotenode *PuddleAddr, request MkfileRequest) (*MkfileReply, error) {

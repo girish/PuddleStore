@@ -124,6 +124,23 @@ func (puddle *PuddleNode) StoreInode(path string, inode *Inode, id uint64) error
 	return nil
 }
 
+func (puddle *PuddleNode) lookupInode(block []byte, vguid Vguid,
+	size uint32, id uint64) (uint32, error) {
+	length := size / tapestry.DIGITS
+	for i := uint32(0); i < length; i++ {
+		curAguid := ByteIntoAguid(block, i*tapestry.DIGITS)
+		curVguid, err := puddle.getRaftVguid(curAguid, id)
+		if err != nil {
+			return 0, err
+		}
+		if curVguid == vguid {
+			return i, nil
+		}
+	}
+
+	return 0, fmt.Errorf("Not found!")
+}
+
 // Gets an inode from a given path
 func (puddle *PuddleNode) getInode(path string, id uint64) (*Inode, error) {
 

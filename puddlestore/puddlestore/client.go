@@ -47,7 +47,6 @@ func (c *Client) Ls(path string) (elements string, err error) {
 
 	reply, err := lsRPC(&remoteAddr, request)
 	if err != nil {
-		fmt.Println(err)
 		return
 	}
 	if !reply.Ok {
@@ -65,7 +64,6 @@ func (c *Client) Cd(path string) (err error) {
 	reply, err := cdRPC(&remoteAddr, request)
 
 	if err != nil {
-		fmt.Println(err)
 		return
 	}
 	if !reply.Ok {
@@ -83,7 +81,23 @@ func (c *Client) Mkdir(path string) (err error) {
 	reply, err := mkdirRPC(&remoteAddr, request)
 
 	if err != nil {
-		fmt.Println(err)
+		return
+	}
+	if !reply.Ok {
+		fmt.Errorf("Could not create directory")
+	}
+
+	return nil
+}
+
+func (c *Client) Rmdir(path string) (err error) {
+	request := RmdirRequest{c.Id, path}
+
+	remoteAddr := c.PuddleServ
+
+	reply, err := rmdirRPC(&remoteAddr, request)
+
+	if err != nil {
 		return
 	}
 	if !reply.Ok {
