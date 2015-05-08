@@ -34,7 +34,7 @@ func (puddle *PuddleNode) connect(req *ConnectRequest) (ConnectReply, error) {
 
 func (puddle *PuddleNode) ls(req *LsRequest) (LsReply, error) {
 	reply := LsReply{}
-	var elements [FILES_PER_INODE]string
+	var elements [FILES_PER_INODE + 2]string
 	numElements := 2 // Leave 2 spots for '.' and '..'
 
 	curdir, ok := puddle.clientPaths[req.ClientId]
@@ -66,7 +66,7 @@ func (puddle *PuddleNode) ls(req *LsRequest) (LsReply, error) {
 	}
 
 	// Then we get the name of all the block inodes
-	dirInodes, err := puddle.getBlockInodes(curdir, inode, dataBlock)
+	dirInodes, err := puddle.getBlockInodes(curdir, inode, dataBlock, clientId)
 	if err != nil {
 		return LsReply{false, ""}, err
 	}
@@ -76,7 +76,7 @@ func (puddle *PuddleNode) ls(req *LsRequest) (LsReply, error) {
 	size := inode.size / tapestry.DIGITS
 	fmt.Println("Size in ls:", size)
 	for i := uint32(2); i < size+2; i++ {
-		elements[numElements-2] = dirInodes[i-2].name
+		elements[numElements] = dirInodes[i-2].name
 		numElements++
 	}
 
@@ -186,19 +186,17 @@ func (puddle *PuddleNode) mkdir(req *MkdirRequest) (MkdirReply, error) {
 		// Declare block paths
 		// dirBlockPath := fmt.Sprintf("%v:%v", dirPath, "indirect")
 		blockPath := fmt.Sprintf("%v:%v", fullPath, "indirect")
-		dotPath := fullPath
-		dotdotPath := dirPath
 
 		// Get hashes
-		newDirInodeHash := tapestry.Hash(blockPath)
+		// newDirBlockHash := tapestry.Hash(blockPath)
+		newDirInodeHash := tapestry.Hash(fullPath)
 		//dotHash := tapestry.Hash(dotPath)
 		//dotdotHash := tapestry.Hash(dotdotPath)
 
 		fmt.Println("Dirpath: %v", dirPath)
 		fmt.Println("Fullpath: %v", fullPath)
 		fmt.Println("blockPath: %v", blockPath)
-		fmt.Println("dotPath: %v", dotPath)
-		fmt.Println("dotdotPath: %v", dotdotPath)
+		fmt.Println("newDirInodeHAsh: %v", newDirInodeHash)
 
 		// Write '.' and '..' to new dir
 		//IdIntoByte(newDirBlock.bytes, &dotHash, 0)
@@ -208,9 +206,14 @@ func (puddle *PuddleNode) mkdir(req *MkdirRequest) (MkdirReply, error) {
 		IdIntoByte(dirBlock, &newDirInodeHash, int(dirInode.size))
 		dirInode.size += tapestry.DIGITS
 
+		bytes := make([]byte, tapestry.DIGITS)
+		IdIntoByte(bytes, &newDirInodeHash, 0)
+		newDirInode.indirect = Guid(ByteIntoAguid(bytes, 0))
+		fmt.Println("\n\n\n\n\n\n", newDirInodeHash, "->", newDirInode.indirect)
+
 		// Save both blocks in tapestry
 		puddle.StoreIndirectBlock(fullPath, newDirBlock.bytes, clientId)
-		puddle.StoreIndirectBlock(dirPath, newDirBlock.bytes, clientId)
+		puddle.StoreIndirectBlock(dirPath, dirBlock, clientId)
 
 		// Encode both inodes
 		puddle.StoreInode(dirPath, dirInode, clientId)
@@ -363,31 +366,24 @@ func (puddle *PuddleNode) mkfile(req *MkfileRequest) (MkfileReply, error) {
 	return reply, nil
 }
 
-func (puddle *PuddleNode) getBlockInodes(path string, inode *Inode, data []byte) ([]*Inode, error) {
-	tapestryNode := puddle.getRandomTapestryNode()
+func (puddle *PuddleNode) getBlockInodes(path string, inode *Inode,
+	data []byte, id uint64) ([]*Inode, error) {
+
 	files := make([]*Inode, FILES_PER_INODE)
 	numFiles := 0
 
 	size := inode.size / tapestry.DIGITS
 	for i := uint32(0); i < size; i++ {
-		fmt.Println(i, "<", size)
 
-		// We finished the data block. There is no more.
-		//if fileguid == 0 {
-		//	return files, nil
-		//}
-
-		filevguid := fmt.Sprintf("%v:%v", path, strconv.FormatUint(uint64(i+1), 10))
-		fileData, err := tapestry.TapestryGet(tapestryNode, filevguid)
+		curAguid := ByteIntoAguid(data, i*tapestry.DIGITS)
+		fmt.Println("Found", curAguid, "In directory. Attempting to get inode...")
+		curInode, err := puddle.getInodeFromAguid(curAguid, id)
 		if err != nil {
-			fmt.Println(err)
 			return nil, err
 		}
+		fmt.Println("Success.")
 
-		inode := new(Inode)
-		inode.GobDecode(fileData)
-
-		files[numFiles] = inode
+		files[numFiles] = curInode
 		numFiles++
 
 	}
@@ -498,7 +494,15 @@ func IdIntoByte(bytes []byte, id *tapestry.ID, start int) {
 	}
 }
 
-func makeString(elements [FILES_PER_INODE]string) string {
+func ByteIntoAguid(bytes []byte, start uint32) Aguid {
+	aguid := ""
+	for i := uint32(0); i < tapestry.DIGITS; i++ {
+		aguid += strconv.FormatUint(uint64(bytes[start+i]), tapestry.BASE)
+	}
+	return Aguid(strings.ToUpper(aguid))
+}
+
+func makeString(elements [FILES_PER_INODE + 2]string) string {
 	ret := ""
 	for _, s := range elements {
 		if s == "" {
