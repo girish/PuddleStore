@@ -43,7 +43,7 @@ func main() {
 	clientCommands := map[string]command{
 		// "debug": command{toggleDebug, "debug <on|off>", "Turn debug on or off. On by default", 1},
 		"ls":    command{ls, "ls", "list directory contents", 0},
-		"cd":    command{cd, "cd <path>", "change to given directory", 1},
+		"cd":    command{cd, "cd <path>", "change to given directory", 0},
 		"mkdir": command{mkdir, "mkdir <path>", "make directory", 1},
 		"mkfile": command{mkfile, "mkfile <path>", "make an empty file", 1},
 	}

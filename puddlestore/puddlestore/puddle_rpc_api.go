@@ -31,6 +31,7 @@ func ConnectRPC(remotenode *PuddleAddr, request ConnectRequest) (*ConnectReply, 
 
 type LsRequest struct {
 	ClientId uint64
+	Path     string
 }
 
 type LsReply struct {

@@ -15,7 +15,14 @@ func clientHash(shell *Shell, args []string) error {
 */
 
 func ls(shell *Shell, args []string) error {
-	output, err := shell.c.Ls()
+	var output string
+	var err error
+	if len(args) > 1 {
+		output, err = shell.c.Ls(args[1])
+	} else {
+		output, err = shell.c.Ls("")
+	}
+
 	if err != nil {
 		fmt.Println(err)
 	} else {
@@ -25,18 +32,25 @@ func ls(shell *Shell, args []string) error {
 }
 
 func cd(shell *Shell, args []string) error {
-	return nil
-}
-
-func mkdir(shell *Shell, args []string) error {
-	fmt.Println("Running mkdir with", args[1])
-	err := shell.c.Mkdir(args[1])
+	var err error
+	if len(args) > 1 {
+		err = shell.c.Cd(args[1])
+	} else {
+		err = shell.c.Cd("")
+	}
 	if err != nil {
 		fmt.Println(err)
 	}
 	return nil
 }
 
+func mkdir(shell *Shell, args []string) error {
+	err := shell.c.Mkdir(args[1])
+	if err != nil {
+		fmt.Println(err)
+	}
+	return nil
+}
 
 func mkfile(shell *Shell, args []string) error {
 	fmt.Println("Running mkfile with", args[1])

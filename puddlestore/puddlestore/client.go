@@ -39,9 +39,9 @@ func (c *Client) SendRequest(command int, data []byte) (err error) {
 	return nil
 }
 
-func (c *Client) Ls() (elements string, err error) {
+func (c *Client) Ls(path string) (elements string, err error) {
 
-	request := LsRequest{c.Id}
+	request := LsRequest{c.Id, path}
 
 	remoteAddr := c.PuddleServ
 
@@ -55,6 +55,24 @@ func (c *Client) Ls() (elements string, err error) {
 	}
 
 	return reply.Elements, nil
+}
+
+func (c *Client) Cd(path string) (err error) {
+	request := CdRequest{c.Id, path}
+
+	remoteAddr := c.PuddleServ
+
+	reply, err := cdRPC(&remoteAddr, request)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	if !reply.Ok {
+		fmt.Errorf("Could not change directory")
+	}
+
+	return nil
 }
 
 func (c *Client) Mkdir(path string) (err error) {
