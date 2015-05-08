@@ -392,7 +392,7 @@ func TestFileMapConsistency(t *testing.T) {
 	var ascii int
 	ascii = 48
 	key := ""
-	for i := 0; i < 15; i++ {
+	for i := 0; i < 20; i++ {
 		key = key + string(ascii)
 		reply, _ := client.SendRequestWithResponse(SET, []byte(key+":"+key))
 		if reply.Status != OK {
@@ -408,7 +408,7 @@ func TestFileMapConsistency(t *testing.T) {
 
 	//Now we get them
 	key = ""
-	for i := 0; i < 15; i++ {
+	for i := 0; i < 20; i++ {
 		key = key + string(ascii)
 		reply, _ := client.SendRequestWithResponse(GET, []byte(key))
 		if reply.Status != OK {
@@ -423,7 +423,7 @@ func TestFileMapConsistency(t *testing.T) {
 	}
 	//Now we remove them
 	key = ""
-	for i := 0; i < 15; i++ {
+	for i := 0; i < 20; i++ {
 		key = key + string(ascii)
 		reply, _ := client.SendRequestWithResponse(REMOVE, []byte(key))
 		if reply.Status != OK {
@@ -438,7 +438,7 @@ func TestFileMapConsistency(t *testing.T) {
 	}
 	//Now we make sure they are not there
 	key = ""
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 20; i++ {
 		key = key + string(ascii)
 		reply, _ := client.SendRequestWithResponse(GET, []byte("hello"))
 		if reply.Status != OK {
