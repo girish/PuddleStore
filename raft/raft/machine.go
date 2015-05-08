@@ -56,6 +56,34 @@ func (r *RaftNode) processLog(entry LogEntry) ClientReply {
 		}
 		r.requestMutex.Unlock()
 
+	case LOCK:
+		r.lockMapMutex.Lock()
+		key := string(entry.Data)
+		if entry.Data == nil {
+			response = "FAIL:The key cannot be nil"
+		} else if val, ok := r.lockMap[key]; ok {
+			//means its locked -- what fault tolerance are we doing? or is puddlestore in charge
+			response = "FAIL:The path is locked"
+		} else {
+			//means its unlocked, so we lock
+			r.lockMap[key] = true
+			response = "SUCCESS:Key " + key + "is now locked"
+		}
+		r.lockMapMutex.Unlock()
+
+	case UNLOCK:
+		r.lockMapMutex.Lock()
+		key := string(entry.Data)
+		if entry.Data == nil {
+			response = "FAIL:The key cannot be nil"
+		} else {
+			//We dont care and we unlock its for the user not to unlock something of
+			//someone else
+			response = "SUCCESS:Key " + key + "is now unlocked"
+		}
+		r.lockMapMutex.Unlock()
+
+
 	default:
 		response = "Success!"
 	}

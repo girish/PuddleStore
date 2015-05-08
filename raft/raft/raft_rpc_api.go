@@ -173,6 +173,8 @@ const (
 	//Commands that modify the map that raft is in charge of
 	GET //for querying
 	SET //for modifying files
+	LOCK
+	UNLOCK
 )
 
 type ClientRequest struct {

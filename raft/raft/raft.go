@@ -69,6 +69,10 @@ type RaftNode struct {
 	/*The map that we need to keep the state of PuddleStore*/
 	fileMap    map[string]string
 	fileMapMtx sync.Mutex
+
+	/*The map that we need to keep the locks of PuddleStore*/
+	lockMap    map[string]bool
+	lockMapMtx sync.Mutex
 }
 
 type NodeAddr struct {
@@ -100,6 +104,8 @@ func CreateNode(localPort int, remoteAddr *NodeAddr, config *Config) (rp *RaftNo
 	r.matchIndex = make(map[string]uint64)
 
 	r.fileMap = make(map[string]string)
+
+	r.lockMap = make(map[string]bool)
 
 	r.Testing = NewTesting()
 	r.Testing.PauseWorld(false)
