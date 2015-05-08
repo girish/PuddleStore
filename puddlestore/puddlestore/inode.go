@@ -49,6 +49,16 @@ func CreateDirInode(name string) *Inode {
 	return inode
 }
 
+func CreateFileInode(name string) *Inode {
+	inode := new(Inode)
+	inode.name = name
+	inode.filetype = FILE
+	//	inode.size = tapestry.DIGITS * 2 // for '.' and '..'
+	inode.size = 0
+	inode.indirect = ""
+	return inode
+}
+
 func CreateBlock() *Block {
 	block := new(Block)
 	block.bytes = make([]byte, BLOCK_SIZE)
