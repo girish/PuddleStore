@@ -74,3 +74,21 @@ func (c *Client) Mkdir(path string) (err error) {
 
 	return nil
 }
+
+func (c *Client) Mkfile(path string) (err error) {
+	request := MkfileRequest{c.Id, path}
+
+	remoteAddr := c.PuddleServ
+
+	reply, err := mkfileRPC(&remoteAddr, request)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	if !reply.Ok {
+		fmt.Errorf("Could not create file")
+	}
+
+	return nil
+}

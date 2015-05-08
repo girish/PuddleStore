@@ -45,6 +45,7 @@ func main() {
 		"ls":    command{ls, "ls", "list directory contents", 0},
 		"cd":    command{cd, "cd <path>", "change to given directory", 1},
 		"mkdir": command{mkdir, "mkdir <path>", "make directory", 1},
+		"mkfile": command{mkfile, "mkfile <path>", "make an empty file", 1},
 	}
 
 	// Kick off CLI, await exit

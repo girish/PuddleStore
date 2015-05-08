@@ -80,10 +80,32 @@ type MkdirReply struct {
 	Ok bool
 }
 
+
+type MkfileRequest struct {
+	ClientId uint64
+	Path     string
+}
+
+type MkfileReply struct {
+	Ok bool
+}
+
 func mkdirRPC(remotenode *PuddleAddr, request MkdirRequest) (*MkdirReply, error) {
 	var reply MkdirReply
 
 	err := makeRemoteCall(remotenode, "MkdirImpl", request, &reply)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	return &reply, nil
+}
+
+func mkfileRPC(remotenode *PuddleAddr, request MkfileRequest) (*MkfileReply, error) {
+	var reply MkfileReply
+
+	err := makeRemoteCall(remotenode, "MkfileImpl", request, &reply)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
