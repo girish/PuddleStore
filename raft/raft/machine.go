@@ -62,8 +62,8 @@ func (r *RaftNode) processLog(entry LogEntry) ClientReply {
 		if entry.Data == nil {
 			response = "FAIL:The key cannot be nil"
 		} else if _, ok := r.lockMap[key]; ok {
-			//means its locked -- what fault tolerance are we doing? or is puddlestore in charge
-			response = "FAIL:The path is locked"
+			//means its locked --
+			response = "FAIL:The key is locked is locked"
 		} else {
 			//means its unlocked, so we lock
 			r.lockMap[key] = true
@@ -79,6 +79,7 @@ func (r *RaftNode) processLog(entry LogEntry) ClientReply {
 		} else {
 			//We dont care and we unlock its for the user not to unlock something of
 			//someone else
+			delete(r.lockMap, key)
 			response = "SUCCESS:Key " + key + "is now unlocked"
 		}
 		r.lockMapMtx.Unlock()
