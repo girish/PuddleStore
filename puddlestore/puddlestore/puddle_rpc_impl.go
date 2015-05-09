@@ -44,6 +44,12 @@ func (server *PuddleRPCServer) ConnectImpl(req *ConnectRequest, rep *ConnectRepl
 	return err
 }
 
+func (server *PuddleRPCServer) PwdImpl(req *PwdRequest, rep *PwdReply) error {
+	rvreply, err := server.node.pwd(req)
+	*rep = rvreply
+	return err
+}
+
 func (server *PuddleRPCServer) LsImpl(req *LsRequest, rep *LsReply) error {
 	rvreply, err := server.node.ls(req)
 	*rep = rvreply

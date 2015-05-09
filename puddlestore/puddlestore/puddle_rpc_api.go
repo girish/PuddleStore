@@ -28,6 +28,26 @@ func ConnectRPC(remotenode *PuddleAddr, request ConnectRequest) (*ConnectReply, 
 	return &reply, nil
 }
 
+type PwdRequest struct {
+	ClientId uint64
+}
+
+type PwdReply struct {
+	Ok   bool
+	Path string
+}
+
+func pwdRPC(remotenode *PuddleAddr, request PwdRequest) (*PwdReply, error) {
+	var reply PwdReply
+
+	err := makeRemoteCall(remotenode, "PwdImpl", request, &reply)
+	if err != nil {
+		return nil, err
+	}
+
+	return &reply, nil
+}
+
 type LsRequest struct {
 	ClientId uint64
 	Path     string

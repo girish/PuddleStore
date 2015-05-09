@@ -8,7 +8,7 @@ import (
 	Client wrapper to avoid clients to call RPCs directly
 */
 
-const MAX_RETIRES = 5
+const MAX_RETRIES = 10
 
 type Client struct {
 	LocalAddr  string
@@ -21,12 +21,22 @@ func CreateClient(remoteAddr PuddleAddr) (cp *Client, err error) {
 	cp = new(Client)
 
 	request := ConnectRequest{}
+	var reply *ConnectReply
 
-	reply, err := ConnectRPC(&remoteAddr, request)
+	retries := 0
+	for retries < MAX_RETRIES {
+		reply, err = ConnectRPC(&remoteAddr, request)
+		if err == nil {
+			break
+		}
+		retries++
+	}
 	if err != nil {
+		err = fmt.Errorf("Could not access the puddle server.")
 		fmt.Println(err)
 		return
 	}
+
 	if !reply.Ok {
 		fmt.Errorf("Could not register Client.")
 	}
@@ -38,21 +48,52 @@ func CreateClient(remoteAddr PuddleAddr) (cp *Client, err error) {
 	return
 }
 
-func (c *Client) SendRequest(command int, data []byte) (err error) {
+func (c *Client) Pwd() (path string, err error) {
+	request := PwdRequest{c.Id}
+	var reply *PwdReply
 
-	return nil
+	remoteAddr := c.PuddleServ
+
+	retries := 0
+	for retries < MAX_RETRIES {
+		reply, err = pwdRPC(&remoteAddr, request)
+		if err == nil {
+			break
+		}
+		retries++
+	}
+	if err != nil {
+		err = fmt.Errorf("Could not access the puddle server.")
+		return
+	}
+
+	if !reply.Ok {
+		fmt.Errorf("Could not get present working directory.")
+	}
+
+	return reply.Path, nil
 }
 
 func (c *Client) Ls(path string) (elements string, err error) {
 
 	request := LsRequest{c.Id, path}
+	var reply *LsReply
 
 	remoteAddr := c.PuddleServ
 
-	reply, err := lsRPC(&remoteAddr, request)
+	retries := 0
+	for retries < MAX_RETRIES {
+		reply, err = lsRPC(&remoteAddr, request)
+		if err == nil {
+			break
+		}
+		retries++
+	}
 	if err != nil {
+		err = fmt.Errorf("Could not access the puddle server.")
 		return
 	}
+
 	if !reply.Ok {
 		fmt.Errorf("Could not list directory contents.")
 	}
@@ -62,14 +103,23 @@ func (c *Client) Ls(path string) (elements string, err error) {
 
 func (c *Client) Cd(path string) (err error) {
 	request := CdRequest{c.Id, path}
+	var reply *CdReply
 
 	remoteAddr := c.PuddleServ
 
-	reply, err := cdRPC(&remoteAddr, request)
-
+	retries := 0
+	for retries < MAX_RETRIES {
+		reply, err = cdRPC(&remoteAddr, request)
+		if err == nil {
+			break
+		}
+		retries++
+	}
 	if err != nil {
+		err = fmt.Errorf("Could not access the puddle server.")
 		return
 	}
+
 	if !reply.Ok {
 		fmt.Errorf("Could not change directory")
 	}
@@ -79,14 +129,23 @@ func (c *Client) Cd(path string) (err error) {
 
 func (c *Client) Mkdir(path string) (err error) {
 	request := MkdirRequest{c.Id, path}
+	var reply *MkdirReply
 
 	remoteAddr := c.PuddleServ
 
-	reply, err := mkdirRPC(&remoteAddr, request)
-
+	retries := 0
+	for retries < MAX_RETRIES {
+		reply, err = mkdirRPC(&remoteAddr, request)
+		if err == nil {
+			break
+		}
+		retries++
+	}
 	if err != nil {
+		err = fmt.Errorf("Could not access the puddle server.")
 		return
 	}
+
 	if !reply.Ok {
 		fmt.Errorf("Could not create directory")
 	}
@@ -96,14 +155,23 @@ func (c *Client) Mkdir(path string) (err error) {
 
 func (c *Client) Rmdir(path string) (err error) {
 	request := RmdirRequest{c.Id, path}
+	var reply *RmdirReply
 
 	remoteAddr := c.PuddleServ
 
-	reply, err := rmdirRPC(&remoteAddr, request)
-
+	retries := 0
+	for retries < MAX_RETRIES {
+		reply, err = rmdirRPC(&remoteAddr, request)
+		if err == nil {
+			break
+		}
+		retries++
+	}
 	if err != nil {
+		err = fmt.Errorf("Could not access the puddle server.")
 		return
 	}
+
 	if !reply.Ok {
 		fmt.Errorf("Could not create directory")
 	}
@@ -113,15 +181,24 @@ func (c *Client) Rmdir(path string) (err error) {
 
 func (c *Client) Cat(path string, location, count uint32) ([]byte, uint32, error) {
 	request := CatRequest{c.Id, path, location, count}
+	var reply *CatReply
+	var err error
 
 	remoteAddr := c.PuddleServ
 
-	reply, err := catRPC(&remoteAddr, request)
-
+	retries := 0
+	for retries < MAX_RETRIES {
+		reply, err = catRPC(&remoteAddr, request)
+		if err == nil {
+			break
+		}
+		retries++
+	}
 	if err != nil {
-		fmt.Println(err)
+		err = fmt.Errorf("Could not access the puddle server.")
 		return nil, 0, err
 	}
+
 	if !reply.Ok {
 		fmt.Errorf("Could not create file")
 	}
@@ -131,14 +208,23 @@ func (c *Client) Cat(path string, location, count uint32) ([]byte, uint32, error
 
 func (c *Client) Mkfile(path string) (err error) {
 	request := MkfileRequest{c.Id, path}
+	var reply *MkfileReply
 
 	remoteAddr := c.PuddleServ
 
-	reply, err := mkfileRPC(&remoteAddr, request)
-
+	retries := 0
+	for retries < MAX_RETRIES {
+		reply, err = mkfileRPC(&remoteAddr, request)
+		if err == nil {
+			break
+		}
+		retries++
+	}
 	if err != nil {
+		err = fmt.Errorf("Could not access the puddle server.")
 		return
 	}
+
 	if !reply.Ok {
 		fmt.Errorf("Could not create file")
 	}
@@ -148,14 +234,23 @@ func (c *Client) Mkfile(path string) (err error) {
 
 func (c *Client) Rmfile(path string) (err error) {
 	request := RmfileRequest{c.Id, path}
+	var reply *RmfileReply
 
 	remoteAddr := c.PuddleServ
 
-	reply, err := rmfileRPC(&remoteAddr, request)
-
+	retries := 0
+	for retries < MAX_RETRIES {
+		reply, err = rmfileRPC(&remoteAddr, request)
+		if err == nil {
+			break
+		}
+		retries++
+	}
 	if err != nil {
+		err = fmt.Errorf("Could not access the puddle server.")
 		return
 	}
+
 	if !reply.Ok {
 		fmt.Errorf("Could not create file")
 	}
@@ -165,14 +260,24 @@ func (c *Client) Rmfile(path string) (err error) {
 
 func (c *Client) Writefile(path string, location uint32, buf []byte) (uint32, error) {
 	request := WritefileRequest{c.Id, path, location, buf}
+	var reply *WritefileReply
+	var err error
 
 	remoteAddr := c.PuddleServ
 
-	reply, err := writefileRPC(&remoteAddr, request)
-
+	retries := 0
+	for retries < MAX_RETRIES {
+		reply, err = writefileRPC(&remoteAddr, request)
+		if err == nil {
+			break
+		}
+		retries++
+	}
 	if err != nil {
+		err = fmt.Errorf("Could not access the puddle server.")
 		return 0, err
 	}
+
 	if !reply.Ok {
 		fmt.Errorf("Could not create file")
 	}

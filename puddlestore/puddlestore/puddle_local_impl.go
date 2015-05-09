@@ -31,6 +31,12 @@ func (puddle *PuddleNode) connect(req *ConnectRequest) (ConnectReply, error) {
 	return reply, nil
 }
 
+// Easiest piece of code of my life.
+func (puddle *PuddleNode) pwd(req *PwdRequest) (PwdReply, error) {
+	reply := PwdReply{true, puddle.getCurrentDir(req.ClientId)}
+	return reply, nil
+}
+
 func (puddle *PuddleNode) ls(req *LsRequest) (LsReply, error) {
 	reply := LsReply{}
 	var elements [FILES_PER_INODE + 2]string
@@ -46,6 +52,11 @@ func (puddle *PuddleNode) ls(req *LsRequest) (LsReply, error) {
 			panic("Did not found the current path of a client that is supposed to be registered")
 		}
 	}
+
+	if path[0] != '/' {
+		path = puddle.getCurrentDir(clientId) + "/" + path
+	}
+	path = removeExcessSlashes(path)
 
 	// fmt.Printf("Lookingg for %v in clientPaths. Found %v\n", req.ClientId, curdir)
 
