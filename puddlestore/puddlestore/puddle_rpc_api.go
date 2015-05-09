@@ -16,10 +16,10 @@ type ConnectReply struct {
 }
 
 func ConnectRPC(remotenode *PuddleAddr, request ConnectRequest) (*ConnectReply, error) {
-	fmt.Println("(Puddlestore) RPC Connect to ", remotenode.Addr)
+	fmt.Println("(Puddlestore) RPC Connect to", remotenode.Addr)
 	var reply ConnectReply
 
-	err := makeRemoteCall(remotenode, "ConnectImpl", request, &reply)
+	err := makeRemoteCall(remotenode, "AAA", request, &reply)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -28,19 +28,19 @@ func ConnectRPC(remotenode *PuddleAddr, request ConnectRequest) (*ConnectReply, 
 	return &reply, nil
 }
 
-type lsRequest struct {
+type LsRequest struct {
 	FromNode PuddleAddr
 }
 
-type lsReply struct {
+type LsReply struct {
 	elements []string
 	Ok       bool
 }
 
-func lsRPC(remotenode *PuddleAddr, request lsRequest) (*lsReply, error) {
-	var reply lsReply
+func lsRPC(remotenode *PuddleAddr, request LsRequest) (*LsReply, error) {
+	var reply LsReply
 
-	err := makeRemoteCall(remotenode, "lsImpl", request, &reply)
+	err := makeRemoteCall(remotenode, "LsImpl", request, &reply)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -49,19 +49,19 @@ func lsRPC(remotenode *PuddleAddr, request lsRequest) (*lsReply, error) {
 	return &reply, nil
 }
 
-type cdRequest struct {
+type CdRequest struct {
 	path     string
 	FromNode PuddleAddr
 }
 
-type cdReply struct {
+type CdReply struct {
 	Ok bool
 }
 
-func cdRPC(remotenode *PuddleAddr, request cdRequest) (*cdReply, error) {
-	var reply cdReply
+func cdRPC(remotenode *PuddleAddr, request CdRequest) (*CdReply, error) {
+	var reply CdReply
 
-	err := makeRemoteCall(remotenode, "cdImpl", request, &reply)
+	err := makeRemoteCall(remotenode, "CdImpl", request, &reply)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -70,19 +70,19 @@ func cdRPC(remotenode *PuddleAddr, request cdRequest) (*cdReply, error) {
 	return &reply, nil
 }
 
-type mkdirRequest struct {
+type MkdirRequest struct {
 	path     string
 	FromNode PuddleAddr
 }
 
-type mkdirReply struct {
+type MkdirReply struct {
 	Ok bool
 }
 
-func mkdirRPC(remotenode *PuddleAddr, request mkdirRequest) (*mkdirReply, error) {
-	var reply mkdirReply
+func mkdirRPC(remotenode *PuddleAddr, request MkdirRequest) (*MkdirReply, error) {
+	var reply MkdirReply
 
-	err := makeRemoteCall(remotenode, "mkdirImpl", request, &reply)
+	err := makeRemoteCall(remotenode, "MkdirImpl", request, &reply)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err

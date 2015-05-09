@@ -2,5 +2,5 @@
 *~
 /raft/raftlogs
 /puddlestore/raftlogs
-/puddlestore/cli-main
+/puddlestore/cli-node
 /puddlestore/cli-client
