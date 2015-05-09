@@ -159,6 +159,300 @@ func (puddle *PuddleNode) cd(req *CdRequest) (CdReply, error) {
 	return reply, nil
 }
 
+func (puddle *PuddleNode) mv(req *MvRequest) (MvReply, error) {
+	reply := MvReply{}
+
+	source := req.Source
+	dest := req.Dest
+	clientId := req.ClientId
+
+	// Format paths before starting
+	if source[0] != '/' {
+		source = puddle.getCurrentDir(clientId) + "/" + source
+	}
+	source = removeExcessSlashes(source)
+
+	if dest[0] != '/' {
+		dest = puddle.getCurrentDir(clientId) + "/" + dest
+	}
+	dest = removeExcessSlashes(dest)
+
+	// Same exact path. Just return.
+	if dest == source {
+		reply.Ok = true
+		return reply, nil
+	}
+
+	// Get the name of the new inode, dir path, and dir inode of source and dest
+	sourceDirInode, _, _, sourceDirPath, err := puddle.dir_namev(source, clientId)
+	if err != nil {
+		return reply, fmt.Errorf("Path does not exist")
+	}
+	destDirInode, newName, _, destDirPath, err := puddle.dir_namev(dest, clientId)
+	if err != nil {
+		return reply, fmt.Errorf("Path does not exist")
+	}
+
+	// Check that the source is not a directory (not supported)
+	sourceInode, err := puddle.getInode(source, clientId)
+	if err != nil {
+		return reply, fmt.Errorf("Source file does not exist")
+	}
+	if sourceInode.filetype != FILE {
+		return reply, fmt.Errorf("Cannot move something that is not a file.")
+	}
+
+	// Check if they are in the same directory (rename)
+	if destDirPath == sourceDirPath {
+		sourceInode.name = newName
+		// store the modified source dir inode
+		err = puddle.storeInode(source, sourceInode, clientId)
+		if err != nil {
+			return reply, err
+		}
+		return reply, fmt.Errorf("This is a rename")
+	}
+
+	if destDirInode.size == tapestry.DIGITS*FILES_PER_INODE {
+		return reply, fmt.Errorf("Not enough space in destination directory")
+	}
+
+	_, err = puddle.getInode(dest, clientId)
+	if err == nil {
+		return reply, fmt.Errorf("File with that name exists.")
+	}
+
+	// Get sourceDir, source and dest vguids
+	// sourceDirHash := tapestry.Hash(sourceDirPath)
+	sourceHash := tapestry.Hash(source)
+	// destDirHash := tapestry.Hash(destDirPath)
+	destHash := tapestry.Hash(dest)
+
+	// sourceDirAguid := Aguid(hashToGuid(sourceDirHash))
+	sourceAguid := Aguid(hashToGuid(sourceHash))
+	//destDirAguid := Aguid(hashToGuid(destDirHash))
+	destAguid := Aguid(hashToGuid(destHash))
+
+	// Get the vguid where all of the info is at
+	res, err := puddle.getRaftVguid(sourceAguid, clientId)
+	sourceVguid := Vguid(strings.Split(string(res), ":")[1])
+	if err != nil {
+		return reply, err
+	}
+
+	sourceInode.name = newName
+
+	// Get source and dest dir blocks
+	sourceDirBlock, err := puddle.getInodeBlock(sourceDirPath, clientId)
+	if err != nil {
+		return reply, err
+	}
+	destDirBlock, err := puddle.getInodeBlock(destDirPath, clientId)
+	if err != nil {
+		return reply, err
+	}
+
+	// Get that vguid from the sourceDirBlock and remove
+	err = puddle.removeEntryFromBlock(sourceDirBlock, sourceVguid,
+		sourceDirInode.size, clientId)
+	if err != nil {
+		return reply, err
+	}
+	sourceDirInode.size -= tapestry.DIGITS
+
+	// Map the new path to the same vguid the source pointed to.
+	err = puddle.setRaftVguid(destAguid, sourceVguid, clientId)
+	if err != nil {
+		return reply, err
+	}
+	// Remove the new old mapping of source
+	err = puddle.removeRaftVguid(sourceAguid, clientId)
+	if err != nil {
+		return reply, err
+	}
+
+	// Add the new entry to dest dir
+	IdIntoByte(destDirBlock, &destHash, int(destDirInode.size))
+	destDirInode.size += tapestry.DIGITS
+
+	// store the modified source dir block
+	err = puddle.storeIndirectBlock(sourceDirPath, sourceDirBlock, clientId)
+	if err != nil {
+		return reply, err
+	}
+	// store the modified source dir block
+	err = puddle.storeIndirectBlock(destDirPath, destDirBlock, clientId)
+	if err != nil {
+		return reply, err
+	}
+
+	// store the modified source dir inode
+	err = puddle.storeInode(sourceDirPath, sourceDirInode, clientId)
+	if err != nil {
+		return reply, err
+	}
+	// store the modified dest dir inode
+	err = puddle.storeInode(destDirPath, destDirInode, clientId)
+	if err != nil {
+		return reply, err
+	}
+
+	err = puddle.storeInode(dest, sourceInode, clientId)
+	if err != nil {
+		return reply, err
+	}
+
+	reply.Ok = true
+	return reply, nil
+}
+
+func (puddle *PuddleNode) cp(req *MvRequest) (MvReply, error) {
+	reply := MvReply{}
+
+	source := req.Source
+	dest := req.Dest
+	clientId := req.ClientId
+
+	// Format paths before starting
+	if source[0] != '/' {
+		source = puddle.getCurrentDir(clientId) + "/" + source
+	}
+	source = removeExcessSlashes(source)
+
+	if dest[0] != '/' {
+		dest = puddle.getCurrentDir(clientId) + "/" + dest
+	}
+	dest = removeExcessSlashes(dest)
+
+	// Same exact path. Just return.
+	if dest == source {
+		reply.Ok = true
+		return reply, nil
+	}
+
+	// Get the name of the new inode, dir path, and dir inode of source and dest
+	destDirInode, newName, _, destDirPath, err := puddle.dir_namev(dest, clientId)
+	if err != nil {
+		return reply, fmt.Errorf("Path does not existt")
+	}
+
+	// Check that the source is not a directory (not supported)
+	sourceInode, err := puddle.getInode(source, clientId)
+	if err != nil {
+		return reply, fmt.Errorf("Source file does not exist")
+	}
+	if sourceInode.filetype != FILE {
+		return reply, fmt.Errorf("Cannot move something that is not a file.")
+	}
+
+	if destDirInode.size == tapestry.DIGITS*FILES_PER_INODE {
+		return reply, fmt.Errorf("Not enough space in destination directory")
+	}
+
+	_, err = puddle.getInode(dest, clientId)
+	if err == nil {
+		return reply, fmt.Errorf("File with that name exists.")
+	}
+
+	// Get sourceDir, source and dest vguids
+	// sourceDirHash := tapestry.Hash(sourceDirPath)
+	//sourceHash := tapestry.Hash(source)
+	// destDirHash := tapestry.Hash(destDirPath)
+	destHash := tapestry.Hash(dest)
+
+	// sourceDirAguid := Aguid(hashToGuid(sourceDirHash))
+	//sourceAguid := Aguid(hashToGuid(sourceHash))
+	//destDirAguid := Aguid(hashToGuid(destDirHash))
+	//destAguid := Aguid(hashToGuid(destHash))
+
+	// Get the vguid where all of the info is at
+	// res, err := puddle.getRaftVguid(sourceAguid, clientId)
+	// sourceVguid := Vguid(strings.Split(string(res), ":")[1])
+	if err != nil {
+		return reply, err
+	}
+
+	sourceInode.name = newName
+
+	fmt.Println("\n\n\n1111111111\n\n\n\n")
+
+	// Get source and dest dir blocks
+	// sourceDirBlock, err := puddle.getInodeBlock(sourceDirPath, clientId)
+	if err != nil {
+		return reply, err
+	}
+	sourceBlock, err := puddle.getInodeBlock(source, clientId)
+	if err != nil {
+		return reply, err
+	}
+	destDirBlock, err := puddle.getInodeBlock(destDirPath, clientId)
+	if err != nil {
+		return reply, err
+	}
+
+	// Get that vguid from the sourceDirBlock and remove
+	/*err = puddle.removeEntryFromBlock(sourceDirBlock, sourceVguid,
+		sourceDirInode.size, clientId)
+	if err != nil {
+		return reply, err
+	}
+	sourceDirInode.size -= tapestry.DIGITS
+	*/
+
+	// Map the new path to the same vguid the source pointed to.
+	// err = puddle.setRaftVguid(destAguid, sourceVguid, clientId)
+	// if err != nil {
+	//	return reply, err
+	//}
+
+	/*
+		// Remove the new old mapping of source
+		err = puddle.removeRaftVguid(sourceAguid, clientId)
+		if err != nil {
+			return reply, err
+		}*/
+
+	// Add the new entry to dest dir
+	IdIntoByte(destDirBlock, &destHash, int(destDirInode.size))
+	destDirInode.size += tapestry.DIGITS
+
+	// store the modified source dir block
+	//err = puddle.storeIndirectBlock(sourceDirPath, sourceDirBlock, clientId)
+	//if err != nil {
+	//	return reply, err
+	//}
+
+	fmt.Println("\n\n\n222222222222\n\n\n\n")
+	err = puddle.storeIndirectBlock(dest, sourceBlock, clientId)
+	if err != nil {
+		return reply, err
+	}
+	err = puddle.storeIndirectBlock(destDirPath, destDirBlock, clientId)
+	if err != nil {
+		return reply, err
+	}
+
+	// store the modified source dir inode
+	// err = puddle.storeInode(sourceDirPath, sourceDirInode, clientId)
+	if err != nil {
+		return reply, err
+	}
+	fmt.Println("\n\n\n33333333333333\n\n\n\n")
+	// store the modified dest dir inode
+	err = puddle.storeInode(destDirPath, destDirInode, clientId)
+	if err != nil {
+		return reply, err
+	}
+
+	err = puddle.storeInode(dest, sourceInode, clientId)
+	if err != nil {
+		return reply, err
+	}
+
+	reply.Ok = true
+	return reply, nil
+}
+
 func (puddle *PuddleNode) mkdir(req *MkdirRequest) (MkdirReply, error) {
 	fmt.Println("Entered mkdir")
 	reply := MkdirReply{}
@@ -166,6 +460,11 @@ func (puddle *PuddleNode) mkdir(req *MkdirRequest) (MkdirReply, error) {
 	path := req.Path
 	length := len(path)
 	clientId := req.ClientId
+
+	if path[0] != '/' {
+		path = puddle.getCurrentDir(clientId) + "/" + path
+	}
+	path = removeExcessSlashes(path)
 
 	if length == 0 {
 		return reply, fmt.Errorf("Empty path")
@@ -267,6 +566,11 @@ func (puddle *PuddleNode) mkfile(req *MkfileRequest) (MkfileReply, error) {
 		return reply, fmt.Errorf("Empty path")
 	}
 
+	if path[0] != '/' {
+		path = puddle.getCurrentDir(clientId) + "/" + path
+	}
+	path = removeExcessSlashes(path)
+
 	dirInode, name, fullPath, dirPath, err := puddle.dir_namev(path, clientId)
 	if err != nil {
 		fmt.Println(err)
@@ -360,18 +664,17 @@ func (puddle *PuddleNode) rmdir(req *RmdirRequest) (RmdirReply, error) {
 	// Get rmInode's vguid
 	hash := tapestry.Hash(fullPath)
 	aguid := Aguid(hashToGuid(hash))
-	vguid, err := puddle.getRaftVguid(aguid, clientId)
+	res, err := puddle.getRaftVguid(aguid, clientId)
+	vguid := Vguid(strings.Split(string(res), ":")[1])
 	if err != nil {
 		return reply, err
 	}
 
-	// Get that vguif from the block and zero out the contents
-	pointer, err := puddle.lookupInode(dirBlock, vguid, dirInode.size, clientId)
+	// Get that vguid from the block and zero out the contents
+	err = puddle.removeEntryFromBlock(dirBlock, vguid, dirInode.size, clientId)
 	if err != nil {
 		return reply, err
 	}
-	// MakeZeros(dirBlock, pointer)
-	RemoveEntryFromBlock(dirBlock, pointer, dirInode.size)
 	dirInode.size -= tapestry.DIGITS
 
 	// Remove anode -> vnode mapping from raft.
@@ -431,18 +734,17 @@ func (puddle *PuddleNode) rmfile(req *RmfileRequest) (RmfileReply, error) {
 	// Get rmInode's vguid
 	hash := tapestry.Hash(fullPath)
 	aguid := Aguid(hashToGuid(hash))
-	vguid, err := puddle.getRaftVguid(aguid, clientId)
+	res, err := puddle.getRaftVguid(aguid, clientId)
+	vguid := Vguid(strings.Split(string(res), ":")[1])
 	if err != nil {
 		return reply, err
 	}
 
 	// Get that vguif from the block and zero out the contents
-	pointer, err := puddle.lookupInode(dirBlock, vguid, dirInode.size, clientId)
+	err = puddle.removeEntryFromBlock(dirBlock, vguid, dirInode.size, clientId)
 	if err != nil {
 		return reply, err
 	}
-	// MakeZeros(dirBlock, pointer)
-	RemoveEntryFromBlock(dirBlock, pointer, dirInode.size)
 	dirInode.size -= tapestry.DIGITS
 
 	// Remove anode -> vnode mapping from raft.
@@ -628,6 +930,7 @@ func (puddle *PuddleNode) getBlockInodes(path string, inode *Inode,
 
 		curAguid := ByteIntoAguid(data, i*tapestry.DIGITS)
 		fmt.Println("Found", curAguid, "In directory. Attempting to get inode...")
+		fmt.Println(curAguid)
 		curInode, err := puddle.getInodeFromAguid(curAguid, id)
 		if err != nil {
 			return nil, err
@@ -680,16 +983,4 @@ func (puddle *PuddleNode) dir_namev(pathname string, id uint64) (*Inode, string,
 	fullPath := removeExcessSlashes(dirPath + "/" + name)
 
 	return dirInode, name, fullPath, dirPath, nil
-}
-
-// Removes an entry from a directory block. If it not the last entry,
-// It moves and replaces the last entry with the removing entry.
-func RemoveEntryFromBlock(bytes []byte, start uint32, size uint32) {
-	if start == size-tapestry.DIGITS { // Last one
-		MakeZeros(bytes, start)
-	} else {
-		for i := uint32(0); i < tapestry.DIGITS; i++ {
-			bytes[start+i] = bytes[size-tapestry.DIGITS+i]
-		}
-	}
 }

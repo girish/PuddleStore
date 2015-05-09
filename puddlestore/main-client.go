@@ -12,7 +12,7 @@ func main() {
 	var addr string
 	var debug bool
 
-	addrHelpString := "An online node of the Raft cluster to connect to. If left blank, does not attempt to connect to another node."
+	addrHelpString := "An online node of the puddle cluster to connect to. If left blank, does not attempt to connect to another node."
 	flag.StringVar(&addr, "connect", "", addrHelpString)
 	flag.StringVar(&addr, "c", "", addrHelpString)
 
@@ -44,6 +44,8 @@ func main() {
 		// "debug": command{toggleDebug, "debug <on|off>", "Turn debug on or off. On by default", 1},
 		"ls":        command{ls, "ls", "list directory contents", 0},
 		"cd":        command{cd, "cd <path>", "change to given directory", 0},
+		"mv":        command{mv, "mv <source> <dest>", "Move file to dest", 2},
+		"cp":        command{cp, "cp <souce> <dest>", "Copy file to dest", 2},
 		"mkdir":     command{mkdir, "mkdir <path>", "make directory", 1},
 		"rmdir":     command{rmdir, "rmdir <path>", "make directory", 1},
 		"cat":       command{cat, "cat <path> <location> <count>", "read a file", 3},

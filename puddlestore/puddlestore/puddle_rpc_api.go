@@ -89,6 +89,48 @@ func cdRPC(remotenode *PuddleAddr, request CdRequest) (*CdReply, error) {
 	return &reply, nil
 }
 
+type MvRequest struct {
+	ClientId uint64
+	Source   string
+	Dest     string
+}
+
+type MvReply struct {
+	Ok bool
+}
+
+func mvRPC(remotenode *PuddleAddr, request MvRequest) (*MvReply, error) {
+	var reply MvReply
+
+	err := makeRemoteCall(remotenode, "MvImpl", request, &reply)
+	if err != nil {
+		return nil, err
+	}
+
+	return &reply, nil
+}
+
+type CpRequest struct {
+	ClientId uint64
+	Source   string
+	Dest     string
+}
+
+type CpReply struct {
+	Ok bool
+}
+
+func cpRPC(remotenode *PuddleAddr, request CpRequest) (*CpReply, error) {
+	var reply CpReply
+
+	err := makeRemoteCall(remotenode, "CpImpl", request, &reply)
+	if err != nil {
+		return nil, err
+	}
+
+	return &reply, nil
+}
+
 type MkdirRequest struct {
 	ClientId uint64
 	Path     string

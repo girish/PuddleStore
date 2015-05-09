@@ -14,6 +14,12 @@ func IdIntoByte(bytes []byte, id *tapestry.ID, start int) {
 	}
 }
 
+func AguidIntoByte(bytes []byte, aguid Aguid, start uint32) {
+	for i := uint32(0); i < tapestry.DIGITS; i++ {
+		bytes[start+i] = byte(aguid[i])
+	}
+}
+
 func ByteIntoAguid(bytes []byte, start uint32) Aguid {
 	aguid := ""
 	for i := uint32(0); i < tapestry.DIGITS; i++ {

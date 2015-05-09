@@ -63,7 +63,7 @@ func main() {
 	for !(<-shell.done) {
 	}
 
-	puddlestore.Out.Println("Closing local raft node")
+	puddlestore.Out.Println("Closing local puddle node")
 
 	// r.GracefulExit()
 

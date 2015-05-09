@@ -37,7 +37,7 @@ func (r *RaftNode) processLog(entry LogEntry) ClientReply {
 		key := string(entry.Data)
 		if entry.Data == nil {
 			response = "FAIL:The key cannot be nil"
-		}else if val, ok := r.fileMap[key]; ok {
+		} else if val, ok := r.fileMap[key]; ok {
 			delete(r.fileMap, key)
 			response = "SUCCESS:" + val
 		} else {
@@ -57,11 +57,11 @@ func (r *RaftNode) processLog(entry LogEntry) ClientReply {
 		r.requestMutex.Unlock()
 
 	case LOCK:
-		r.lockMapMutex.Lock()
+		r.lockMapMtx.Lock()
 		key := string(entry.Data)
 		if entry.Data == nil {
 			response = "FAIL:The key cannot be nil"
-		} else if val, ok := r.lockMap[key]; ok {
+		} else if _, ok := r.lockMap[key]; ok {
 			//means its locked -- what fault tolerance are we doing? or is puddlestore in charge
 			response = "FAIL:The path is locked"
 		} else {
@@ -69,10 +69,10 @@ func (r *RaftNode) processLog(entry LogEntry) ClientReply {
 			r.lockMap[key] = true
 			response = "SUCCESS:Key " + key + "is now locked"
 		}
-		r.lockMapMutex.Unlock()
+		r.lockMapMtx.Unlock()
 
 	case UNLOCK:
-		r.lockMapMutex.Lock()
+		r.lockMapMtx.Lock()
 		key := string(entry.Data)
 		if entry.Data == nil {
 			response = "FAIL:The key cannot be nil"
@@ -81,8 +81,7 @@ func (r *RaftNode) processLog(entry LogEntry) ClientReply {
 			//someone else
 			response = "SUCCESS:Key " + key + "is now unlocked"
 		}
-		r.lockMapMutex.Unlock()
-
+		r.lockMapMtx.Unlock()
 
 	default:
 		response = "Success!"

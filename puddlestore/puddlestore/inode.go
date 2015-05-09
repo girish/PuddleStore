@@ -99,17 +99,38 @@ func (d *Inode) GobDecode(buf []byte) error {
 
 // --------------------- GETTERS ----------------------------------------------
 
+// Removes an entry from a directory block. If it not the last entry,
+// It moves and replaces the last entry with the removing entry.
+func (puddle *PuddleNode) removeEntryFromBlock(bytes []byte, vguid Vguid,
+	size uint32, id uint64) error {
+
+	start, err := puddle.lookupInode(bytes, vguid, size, id)
+	if err != nil {
+		return err
+	}
+	if start == size-tapestry.DIGITS { // Last one
+		// MakeZeros(bytes, start)
+	} else {
+		for i := uint32(0); i < tapestry.DIGITS; i++ {
+			bytes[start+i] = bytes[size-tapestry.DIGITS+i]
+		}
+	}
+	return nil
+}
+
 // Get the inode that has a specific vuid from a directory block.
 func (puddle *PuddleNode) lookupInode(block []byte, vguid Vguid,
 	size uint32, id uint64) (uint32, error) {
 	length := size / tapestry.DIGITS
 	for i := uint32(0); i < length; i++ {
 		curAguid := ByteIntoAguid(block, i*tapestry.DIGITS)
-		curVguid, err := puddle.getRaftVguid(curAguid, id)
+		res, err := puddle.getRaftVguid(curAguid, id)
+		curVguid := Vguid(strings.Split(string(res), ":")[1])
 		if err != nil {
 			return 0, err
 		}
 		if curVguid == vguid {
+			fmt.Println("Found:", curAguid, curVguid)
 			return i, nil
 		}
 	}

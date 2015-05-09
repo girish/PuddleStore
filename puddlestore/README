@@ -1,0 +1,36 @@
+dcorrea-mm193
+
+This is our implementation for puddlestore. We implemented all B-level functionality
+integrating Raft and Tapestry. tapestry is in charge of storing and locating 
+files, blocks and directories across the nodes that are part of the network.
+
+Raft is in charge of keeping consistency across the network. Something 
+that you should know is that we have only one raft for the entire filesystem.
+The AGUIDs of our elements are the hashes of the full path of the file or directory
+using the hash function that tapestry gives us. The AGUID of the indirect block
+for both files and directories is the hash of FULL_PATH:indirect. The AGUID of
+data block is similar, it's the hash of FULL_PATH:0 up to 3. The structure and
+relationships of the file is the same as the one described in the help session. 
+And we keep versioning by replacing the VGUID in the raft map.
+
+Our handin requires some explanation. We will handin the version that has full 
+B functionality. However we also have a version that implemented file locking 
+with fault tolerance in case files are locked. It works but it is somewhat less
+unstable than the B version. This is just to give you a heads up for the demo. 
+We will show you when we meet with you. The way we implemented file locking is as 
+follows. 
+
+Raft has the commands LOCK and UNLOCK and they are used to set a lock to a particular
+path (i.e. AGUID). The locks are tracked using a lockMap. Every time that there
+is a request to lock a file the map is checked to see if someone else has the lock.
+If no one has it then it is given, if someone does then puddleStore is in charge of
+retrying. The time interval at which Puddlestore tries keeps increasing with every 
+retry so that raft is not ovewhelmed with requests. After around 10 retries puddlestore
+then gives up and replied to the server that it cannot do it. If in any of those retries
+the file becomes unlocked then the write proceeds. Operations like deleting a file 
+also require a lock and if someone else has it the deletion fails.
+
+We perfomred several tests for puddlestore and added quite a few more to raft to test
+the map. If you have any questions please let us know.
+
+Miguel & David.

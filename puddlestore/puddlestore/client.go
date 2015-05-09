@@ -95,7 +95,7 @@ func (c *Client) Ls(path string) (elements string, err error) {
 	}
 	if err != nil {
 		if err.Error() == "EOF" {
-			err = fmt.Errorf("Could not access the puddle server.")
+			err = fmt.Errorf("Could not find path")
 		}
 		return
 	}
@@ -123,7 +123,63 @@ func (c *Client) Cd(path string) (err error) {
 	}
 	if err != nil {
 		if err.Error() == "EOF" {
-			err = fmt.Errorf("Could not access the puddle server.")
+			err = fmt.Errorf("Could not find path.")
+		}
+		return
+	}
+
+	if !reply.Ok {
+		fmt.Errorf("Could not change directory")
+	}
+
+	return nil
+}
+
+func (c *Client) Mv(source, dest string) (err error) {
+	request := MvRequest{c.Id, source, dest}
+	var reply *MvReply
+
+	remoteAddr := c.PuddleServ
+
+	retries := 0
+	for retries < MAX_RETRIES {
+		reply, err = mvRPC(&remoteAddr, request)
+		if err == nil || err.Error() != "EOF" {
+			break
+		}
+		retries++
+	}
+	if err != nil {
+		if err.Error() == "EOF" {
+			err = fmt.Errorf("Could not find path.")
+		}
+		return
+	}
+
+	if !reply.Ok {
+		fmt.Errorf("Could not change directory")
+	}
+
+	return nil
+}
+
+func (c *Client) Cp(source, dest string) (err error) {
+	request := CpRequest{c.Id, source, dest}
+	var reply *CpReply
+
+	remoteAddr := c.PuddleServ
+
+	retries := 0
+	for retries < MAX_RETRIES {
+		reply, err = cpRPC(&remoteAddr, request)
+		if err == nil || err.Error() != "EOF" {
+			break
+		}
+		retries++
+	}
+	if err != nil {
+		if err.Error() == "EOF" {
+			err = fmt.Errorf("Could not find path.")
 		}
 		return
 	}
@@ -151,7 +207,7 @@ func (c *Client) Mkdir(path string) (err error) {
 	}
 	if err != nil {
 		if err.Error() == "EOF" {
-			err = fmt.Errorf("Could not access the puddle server.")
+			err = fmt.Errorf("Could not find path.")
 		}
 		return
 	}
@@ -179,7 +235,7 @@ func (c *Client) Rmdir(path string) (err error) {
 	}
 	if err != nil {
 		if err.Error() == "EOF" {
-			err = fmt.Errorf("Could not access the puddle server.")
+			err = fmt.Errorf("Could not find path.")
 		}
 		return
 	}
@@ -208,7 +264,7 @@ func (c *Client) Cat(path string, location, count uint32) ([]byte, uint32, error
 	}
 	if err != nil {
 		if err.Error() == "EOF" {
-			err = fmt.Errorf("Could not access the puddle server.")
+			err = fmt.Errorf("Could not find path.")
 		}
 		return nil, 0, err
 	}
@@ -236,7 +292,7 @@ func (c *Client) Mkfile(path string) (err error) {
 	}
 	if err != nil {
 		if err.Error() == "EOF" {
-			err = fmt.Errorf("Could not access the puddle server.")
+			err = fmt.Errorf("Could not find path.")
 		}
 		return
 	}
@@ -264,7 +320,7 @@ func (c *Client) Rmfile(path string) (err error) {
 	}
 	if err != nil {
 		if err.Error() == "EOF" {
-			err = fmt.Errorf("Could not access the puddle server.")
+			err = fmt.Errorf("Could not find path.")
 		}
 		return
 	}
@@ -293,7 +349,7 @@ func (c *Client) Writefile(path string, location uint32, buf []byte) (uint32, er
 	}
 	if err != nil {
 		if err.Error() == "EOF" {
-			err = fmt.Errorf("Could not access the puddle server.")
+			err = fmt.Errorf("Could not find path.")
 		}
 		return 0, err
 	}

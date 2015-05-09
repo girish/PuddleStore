@@ -45,6 +45,22 @@ func cd(shell *Shell, args []string) error {
 	return nil
 }
 
+func mv(shell *Shell, args []string) error {
+	err := shell.c.Mv(args[1], args[2])
+	if err != nil {
+		fmt.Println(err)
+	}
+	return nil
+}
+
+func cp(shell *Shell, args []string) error {
+	err := shell.c.Cp(args[1], args[2])
+	if err != nil {
+		fmt.Println(err)
+	}
+	return nil
+}
+
 func mkdir(shell *Shell, args []string) error {
 	err := shell.c.Mkdir(args[1])
 	if err != nil {
