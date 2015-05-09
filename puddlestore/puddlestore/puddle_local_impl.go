@@ -8,9 +8,9 @@ import (
 	"strings"
 )
 
-func (puddle *PuddleNode) connect(req *ConnectRequest) (*ConnectReply, error) {
+func (puddle *PuddleNode) connect(req *ConnectRequest) (ConnectReply, error) {
 	reply := ConnectReply{}
-	addr := req.FromNode.Addr
+	// addr := req.FromNode.Addr
 	// raftNode := puddle.getRandomRaftNode()
 	// fromAddr := raft.NodeAddr{raft.AddrToId(addr, raftNode.GetConfig().NodeIdSize), addr}
 
@@ -19,15 +19,17 @@ func (puddle *PuddleNode) connect(req *ConnectRequest) (*ConnectReply, error) {
 	client, err := raft.CreateClient(*raftAddr)
 	if err != nil {
 		fmt.Println(err)
-		return nil, err
+		return ConnectReply{false, 0}, err
 	}
 
 	// Clients that just started the connection should start in root node.
-	puddle.clientPaths[addr] = "/"
-	puddle.clients[addr] = client
+	puddle.clientPaths[client.Id] = "/"
+	puddle.clients[client.Id] = client
 
 	reply.Ok = true
-	return &reply, nil
+	reply.Id = client.Id
+	fmt.Println("connect reply:", reply)
+	return reply, nil
 }
 
 func (puddle *PuddleNode) ls(req *LsRequest) (*LsReply, error) {
@@ -35,7 +37,8 @@ func (puddle *PuddleNode) ls(req *LsRequest) (*LsReply, error) {
 	elements := make([]string, FILES_PER_INODE)
 	numElements := 0
 
-	curdir, ok := puddle.clientPaths[req.FromNode.Addr]
+	curdir, ok := puddle.clientPaths[req.ClientId]
+	fmt.Printf("Lookingg for %v in clientPaths. Found %v\n", req.ClientId, curdir)
 	if !ok {
 		panic("Did not found the current path of a client that is supposed to be registered")
 	}
@@ -97,7 +100,7 @@ func (puddle *PuddleNode) cd(req *CdRequest) (*CdReply, error) {
 	}
 
 	// Changes the current path of the client
-	puddle.clientPaths[req.FromNode.Addr] = path
+	puddle.clientPaths[req.ClientId] = path
 
 	reply.Ok = true
 	return &reply, nil
@@ -107,13 +110,13 @@ func (puddle *PuddleNode) mkdir(req *MkdirRequest) (*MkdirReply, error) {
 	reply := MkdirReply{}
 
 	path := req.path
-	addr := req.FromNode.Addr
+	clientId := req.ClientId
 
 	if len(path) == 0 {
 		return nil, fmt.Errorf("Empty path")
 	}
 
-	dirInode, name, fullpath, dirpath, err := puddle.dir_namev(path, addr)
+	dirInode, name, fullpath, dirpath, err := puddle.dir_namev(path, clientId)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -168,8 +171,7 @@ func (puddle *PuddleNode) getInode(path string) (*Inode, error) {
 		return nil, err
 	}
 
-	fmt.Println("ls: Inode decoded")
-	fmt.Println(inode)
+	fmt.Println("node decoded:", inode)
 
 	return inode, nil
 }
@@ -216,7 +218,7 @@ func (puddle *PuddleNode) getBlockInodes(path string, data []byte) ([]*Inode, er
 }
 
 // Tribute to Weenix's version of dir_namev in kernel/fs/namev.c
-func (puddle *PuddleNode) dir_namev(pathname string, addr string) (*Inode, string, string, string, error) {
+func (puddle *PuddleNode) dir_namev(pathname string, addr uint64) (*Inode, string, string, string, error) {
 
 	path := removeExcessSlashes(pathname)
 	lastSlash := strings.LastIndex(path, "/")
