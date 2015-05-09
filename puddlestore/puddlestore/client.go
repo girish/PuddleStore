@@ -39,14 +39,20 @@ func (c *Client) SendRequest(command int, data []byte) (err error) {
 	return nil
 }
 
-func (c *Client) Ls() (reply *LsReply, err error) {
+func (c *Client) Ls() (elements string, err error) {
 
 	request := LsRequest{c.Id}
 
 	remoteAddr := c.PuddleServ
-	fmt.Println("Puddlestore Ls request", request)
 
-	reply, err = lsRPC(&remoteAddr, request)
+	reply, err := lsRPC(&remoteAddr, request)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	if !reply.Ok {
+		fmt.Errorf("Could not list directory contents.")
+	}
 
-	return reply, nil
+	return reply.Elements, nil
 }

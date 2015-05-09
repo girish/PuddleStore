@@ -32,13 +32,13 @@ func (puddle *PuddleNode) connect(req *ConnectRequest) (ConnectReply, error) {
 	return reply, nil
 }
 
-func (puddle *PuddleNode) ls(req *LsRequest) (*LsReply, error) {
+func (puddle *PuddleNode) ls(req *LsRequest) (LsReply, error) {
 	reply := LsReply{}
-	elements := make([]string, FILES_PER_INODE)
+	var elements [FILES_PER_INODE]string
 	numElements := 0
 
 	curdir, ok := puddle.clientPaths[req.ClientId]
-	fmt.Printf("Lookingg for %v in clientPaths. Found %v\n", req.ClientId, curdir)
+	// fmt.Printf("Lookingg for %v in clientPaths. Found %v\n", req.ClientId, curdir)
 	if !ok {
 		panic("Did not found the current path of a client that is supposed to be registered")
 	}
@@ -46,26 +46,28 @@ func (puddle *PuddleNode) ls(req *LsRequest) (*LsReply, error) {
 	// First, get the current directory inode
 	inode, err := puddle.getInode(curdir)
 	if err != nil {
-		return &LsReply{make([]string, 0), false}, err
+		return LsReply{false, ""}, err
 	}
 
 	// Empty file dir (debugging)
 	if inode.size == 0 {
-		reply.elements[0] = "No files, but hey, it got got in."
+		elements[0] = "No files, but hey, it got got in."
+		// reply.elements = makeString(elements)
+		reply.Elements = makeString(elements)
 		reply.Ok = true
-		return &reply, nil
+		return reply, nil
 	}
 
 	// Second, get the data block from this inode.
 	dataBlock, err := puddle.getInodeBlock(inode)
 	if err != nil {
-		return &LsReply{make([]string, 0), false}, err
+		return LsReply{false, ""}, err
 	}
 
 	// Then we get the name of all the block inodes
 	dirInodes, err := puddle.getBlockInodes(curdir, dataBlock)
 	if err != nil {
-		return &LsReply{make([]string, 0), false}, err
+		return LsReply{false, ""}, err
 	}
 
 	for _, n := range dirInodes {
@@ -73,16 +75,16 @@ func (puddle *PuddleNode) ls(req *LsRequest) (*LsReply, error) {
 		numElements++
 	}
 
-	reply.elements = elements
+	reply.Elements = makeString(elements)
 	reply.Ok = true
 
-	return &reply, nil
+	return reply, nil
 }
 
 func (puddle *PuddleNode) cd(req *CdRequest) (*CdReply, error) {
 	reply := CdReply{}
 
-	path := req.path
+	path := req.Path
 
 	if len(path) == 0 {
 		return nil, fmt.Errorf("Empty path")
@@ -109,7 +111,7 @@ func (puddle *PuddleNode) cd(req *CdRequest) (*CdReply, error) {
 func (puddle *PuddleNode) mkdir(req *MkdirRequest) (*MkdirReply, error) {
 	reply := MkdirReply{}
 
-	path := req.path
+	path := req.Path
 	clientId := req.ClientId
 
 	if len(path) == 0 {
@@ -313,4 +315,15 @@ func IdIntoByte(bytes []byte, id *tapestry.ID, start int) {
 	for i := 0; i < tapestry.DIGITS; i++ {
 		bytes[start+i] = byte(id[i])
 	}
+}
+
+func makeString(elements [FILES_PER_INODE]string) string {
+	ret := ""
+	for _, s := range elements {
+		if s == "" {
+			break
+		}
+		ret += "\t" + s
+	}
+	return ret
 }

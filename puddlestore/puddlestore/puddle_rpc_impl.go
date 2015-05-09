@@ -41,12 +41,12 @@ func newPuddlestoreRPCServer(puddle *PuddleNode) (server *PuddleRPCServer) {
 func (server *PuddleRPCServer) ConnectImpl(req *ConnectRequest, rep *ConnectReply) error {
 	rvreply, err := server.node.connect(req)
 	*rep = rvreply
-	fmt.Println("ConnectImpl reply: ", rep)
 	return err
 }
 
 func (server *PuddleRPCServer) LsImpl(req *LsRequest, rep *LsReply) error {
-	rep, err := server.node.ls(req)
+	rvreply, err := server.node.ls(req)
+	*rep = rvreply
 	return err
 }
 

@@ -26,7 +26,6 @@ func ConnectRPC(remotenode *PuddleAddr, request ConnectRequest) (*ConnectReply, 
 		return nil, err
 	}
 
-	fmt.Println("ConnectRPC reply:", reply)
 	return &reply, nil
 }
 
@@ -35,8 +34,8 @@ type LsRequest struct {
 }
 
 type LsReply struct {
-	elements []string
 	Ok       bool
+	Elements string
 }
 
 func lsRPC(remotenode *PuddleAddr, request LsRequest) (*LsReply, error) {
@@ -52,7 +51,7 @@ func lsRPC(remotenode *PuddleAddr, request LsRequest) (*LsReply, error) {
 }
 
 type CdRequest struct {
-	path     string
+	Path     string
 	ClientId uint64
 }
 
@@ -73,7 +72,7 @@ func cdRPC(remotenode *PuddleAddr, request CdRequest) (*CdReply, error) {
 }
 
 type MkdirRequest struct {
-	path     string
+	Path     string
 	ClientId uint64
 }
 
