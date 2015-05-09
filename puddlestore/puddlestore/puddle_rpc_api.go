@@ -107,7 +107,6 @@ func makeRemoteCall(remoteNode *PuddleAddr, method string, req interface{}, rsp 
 
 	// Make the request
 	uniqueMethodName := fmt.Sprintf("%v.%v", remoteNodeAddrStr, method)
-	fmt.Println("Que mamada", uniqueMethodName)
 	err = client.Call(uniqueMethodName, req, rsp)
 	if err != nil {
 		client.Close()

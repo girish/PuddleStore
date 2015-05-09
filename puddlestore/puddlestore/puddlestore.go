@@ -43,6 +43,8 @@ func Start() (p *PuddleNode, err error) {
 	p = &puddle
 	puddle.tnodes = make([]*tapestry.Tapestry, TAPESTRY_NODES)
 	puddle.rnodes = make([]*raft.RaftNode, RAFT_NODES)
+	puddle.clientPaths = make(map[string]string)
+	puddle.clients = make(map[string]*raft.Client)
 
 	// Start runnning the tapestry nodes. --------------
 	t, err := tapestry.Start(0, "")

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+//	"fmt"
 )
 
 /*
@@ -15,9 +15,10 @@ func clientHash(shell *Shell, args []string) error {
 */
 
 func ls(shell *Shell, args []string) error {
-	output, err := shell.c.Ls()
-	fmt.Println(output)
-	return err
+	//output, err := shell.c.Ls()
+	//fmt.Println(output)
+	//return err
+	return nil
 }
 
 func cd(shell *Shell, args []string) error {

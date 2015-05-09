@@ -11,10 +11,12 @@ import (
 func (puddle *PuddleNode) connect(req *ConnectRequest) (*ConnectReply, error) {
 	reply := ConnectReply{}
 	addr := req.FromNode.Addr
-	raftNode := puddle.getRandomRaftNode()
-	fromAddr := raft.NodeAddr{raft.AddrToId(addr, raftNode.GetConfig().NodeIdSize), addr}
+	// raftNode := puddle.getRandomRaftNode()
+	// fromAddr := raft.NodeAddr{raft.AddrToId(addr, raftNode.GetConfig().NodeIdSize), addr}
 
-	client, err := raft.CreateClient(fromAddr)
+	raftAddr := puddle.getRandomRaftNode().GetLocalAddr()
+
+	client, err := raft.CreateClient(*raftAddr)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
