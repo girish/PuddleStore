@@ -16,7 +16,7 @@ type ConnectReply struct {
 }
 
 func ConnectRPC(remotenode *PuddleAddr, request ConnectRequest) (*ConnectReply, error) {
-	fmt.Println("(Puddlestore) RPC Connect")
+	fmt.Println("(Puddlestore) RPC Connect to ", remotenode.Addr)
 	var reply ConnectReply
 
 	err := makeRemoteCall(remotenode, "ConnectImpl", request, &reply)
@@ -107,6 +107,7 @@ func makeRemoteCall(remoteNode *PuddleAddr, method string, req interface{}, rsp 
 
 	// Make the request
 	uniqueMethodName := fmt.Sprintf("%v.%v", remoteNodeAddrStr, method)
+	fmt.Println("Que mamada", uniqueMethodName)
 	err = client.Call(uniqueMethodName, req, rsp)
 	if err != nil {
 		client.Close()

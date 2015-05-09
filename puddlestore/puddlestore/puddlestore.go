@@ -26,6 +26,7 @@ type PuddleNode struct {
 	clients     map[string]*raft.Client // client addr -> client
 
 	rootInode *Inode
+	Local     PuddleAddr
 
 	server *PuddleRPCServer
 }
@@ -85,6 +86,7 @@ func Start() (p *PuddleNode, err error) {
 
 	// RPC server --------------------------------------
 	puddle.server = newPuddlestoreRPCServer(p)
+	puddle.Local = PuddleAddr{puddle.server.listener.Addr().String()}
 
 	fmt.Printf("Started puddlestore, listening at %v\n", puddle.server.listener.Addr().String())
 	// -------------------------------------------------

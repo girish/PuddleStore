@@ -41,7 +41,10 @@ func main() {
 	}
 
 	clientCommands := map[string]command{
-	// "debug": command{toggleDebug, "debug <on|off>", "Turn debug on or off. On by default", 1},
+		// "debug": command{toggleDebug, "debug <on|off>", "Turn debug on or off. On by default", 1},
+		"ls":    command{ls, "ls", "list directory contents", 0},
+		"cd":    command{cd, "cd <path>", "change to given directory", 1},
+		"mkdir": command{mkdir, "mkdir <path>", "make directory", 1},
 	}
 
 	// Kick off CLI, await exit

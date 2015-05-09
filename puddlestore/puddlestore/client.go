@@ -28,3 +28,15 @@ func (c *Client) SendRequest(command int, data []byte) (err error) {
 
 	return nil
 }
+
+func (c *Client) Ls() (reply *lsReply, err error) {
+	fmt.Println("Puddlestore Ls")
+
+	request := lsRequest{}
+
+	remoteAddr := c.PuddleServ.Local
+
+	reply, err = lsRPC(&remoteAddr, request)
+
+	return reply, nil
+}

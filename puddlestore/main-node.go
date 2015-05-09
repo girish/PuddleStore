@@ -57,7 +57,7 @@ func main() {
 	// Kick off CLI, await exit
 	var shell Shell
 	shell.done = make(chan bool)
-	shell.r = r
+	shell.p = r
 	go shell.interact(nodeCommands)
 
 	for !(<-shell.done) {

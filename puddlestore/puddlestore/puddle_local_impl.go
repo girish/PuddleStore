@@ -44,6 +44,13 @@ func (puddle *PuddleNode) ls(req *lsRequest) (*lsReply, error) {
 		return &lsReply{make([]string, 0), false}, err
 	}
 
+	// Empty file dir (debugging)
+	if inode.size == 0 {
+		reply.elements[0] = "No files, but hey, it got got in."
+		reply.Ok = true
+		return &reply, nil
+	}
+
 	// Second, get the data block from this inode.
 	dataBlock, err := puddle.getInodeBlock(inode)
 	if err != nil {
