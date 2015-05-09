@@ -26,14 +26,16 @@ func CreateClient(remoteAddr PuddleAddr) (cp *Client, err error) {
 	retries := 0
 	for retries < MAX_RETRIES {
 		reply, err = ConnectRPC(&remoteAddr, request)
-		if err == nil {
+		if err == nil || err.Error() != "EOF" {
 			break
 		}
 		retries++
 	}
 	if err != nil {
-		err = fmt.Errorf("Could not access the puddle server.")
 		fmt.Println(err)
+		if err.Error() == "EOF" {
+			err = fmt.Errorf("Could not access the puddle server.")
+		}
 		return
 	}
 
@@ -57,13 +59,15 @@ func (c *Client) Pwd() (path string, err error) {
 	retries := 0
 	for retries < MAX_RETRIES {
 		reply, err = pwdRPC(&remoteAddr, request)
-		if err == nil {
+		if err == nil || err.Error() != "EOF" {
 			break
 		}
 		retries++
 	}
 	if err != nil {
-		err = fmt.Errorf("Could not access the puddle server.")
+		if err.Error() == "EOF" {
+			err = fmt.Errorf("Could not access the puddle server.")
+		}
 		return
 	}
 
@@ -84,13 +88,15 @@ func (c *Client) Ls(path string) (elements string, err error) {
 	retries := 0
 	for retries < MAX_RETRIES {
 		reply, err = lsRPC(&remoteAddr, request)
-		if err == nil {
+		if err == nil || err.Error() != "EOF" {
 			break
 		}
 		retries++
 	}
 	if err != nil {
-		err = fmt.Errorf("Could not access the puddle server.")
+		if err.Error() == "EOF" {
+			err = fmt.Errorf("Could not access the puddle server.")
+		}
 		return
 	}
 
@@ -110,13 +116,15 @@ func (c *Client) Cd(path string) (err error) {
 	retries := 0
 	for retries < MAX_RETRIES {
 		reply, err = cdRPC(&remoteAddr, request)
-		if err == nil {
+		if err == nil || err.Error() != "EOF" {
 			break
 		}
 		retries++
 	}
 	if err != nil {
-		err = fmt.Errorf("Could not access the puddle server.")
+		if err.Error() == "EOF" {
+			err = fmt.Errorf("Could not access the puddle server.")
+		}
 		return
 	}
 
@@ -136,13 +144,15 @@ func (c *Client) Mkdir(path string) (err error) {
 	retries := 0
 	for retries < MAX_RETRIES {
 		reply, err = mkdirRPC(&remoteAddr, request)
-		if err == nil {
+		if err == nil || err.Error() != "EOF" {
 			break
 		}
 		retries++
 	}
 	if err != nil {
-		err = fmt.Errorf("Could not access the puddle server.")
+		if err.Error() == "EOF" {
+			err = fmt.Errorf("Could not access the puddle server.")
+		}
 		return
 	}
 
@@ -162,13 +172,15 @@ func (c *Client) Rmdir(path string) (err error) {
 	retries := 0
 	for retries < MAX_RETRIES {
 		reply, err = rmdirRPC(&remoteAddr, request)
-		if err == nil {
+		if err == nil || err.Error() != "EOF" {
 			break
 		}
 		retries++
 	}
 	if err != nil {
-		err = fmt.Errorf("Could not access the puddle server.")
+		if err.Error() == "EOF" {
+			err = fmt.Errorf("Could not access the puddle server.")
+		}
 		return
 	}
 
@@ -189,13 +201,15 @@ func (c *Client) Cat(path string, location, count uint32) ([]byte, uint32, error
 	retries := 0
 	for retries < MAX_RETRIES {
 		reply, err = catRPC(&remoteAddr, request)
-		if err == nil {
+		if err == nil || err.Error() != "EOF" {
 			break
 		}
 		retries++
 	}
 	if err != nil {
-		err = fmt.Errorf("Could not access the puddle server.")
+		if err.Error() == "EOF" {
+			err = fmt.Errorf("Could not access the puddle server.")
+		}
 		return nil, 0, err
 	}
 
@@ -215,13 +229,15 @@ func (c *Client) Mkfile(path string) (err error) {
 	retries := 0
 	for retries < MAX_RETRIES {
 		reply, err = mkfileRPC(&remoteAddr, request)
-		if err == nil {
+		if err == nil || err.Error() != "EOF" {
 			break
 		}
 		retries++
 	}
 	if err != nil {
-		err = fmt.Errorf("Could not access the puddle server.")
+		if err.Error() == "EOF" {
+			err = fmt.Errorf("Could not access the puddle server.")
+		}
 		return
 	}
 
@@ -241,13 +257,15 @@ func (c *Client) Rmfile(path string) (err error) {
 	retries := 0
 	for retries < MAX_RETRIES {
 		reply, err = rmfileRPC(&remoteAddr, request)
-		if err == nil {
+		if err == nil || err.Error() != "EOF" {
 			break
 		}
 		retries++
 	}
 	if err != nil {
-		err = fmt.Errorf("Could not access the puddle server.")
+		if err.Error() == "EOF" {
+			err = fmt.Errorf("Could not access the puddle server.")
+		}
 		return
 	}
 
@@ -268,13 +286,15 @@ func (c *Client) Writefile(path string, location uint32, buf []byte) (uint32, er
 	retries := 0
 	for retries < MAX_RETRIES {
 		reply, err = writefileRPC(&remoteAddr, request)
-		if err == nil {
+		if err == nil || err.Error() != "EOF" {
 			break
 		}
 		retries++
 	}
 	if err != nil {
-		err = fmt.Errorf("Could not access the puddle server.")
+		if err.Error() == "EOF" {
+			err = fmt.Errorf("Could not access the puddle server.")
+		}
 		return 0, err
 	}
 

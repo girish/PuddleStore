@@ -63,19 +63,22 @@ func (puddle *PuddleNode) ls(req *LsRequest) (LsReply, error) {
 	// First, get the current directory inode
 	inode, err := puddle.getInode(path, clientId)
 	if err != nil {
-		return LsReply{false, ""}, err
+		return LsReply{false, ""}, err //fmt.Errorf("Path does not exist")
+	}
+	if inode.filetype != DIR {
+		return LsReply{false, ""}, fmt.Errorf("Not a directory")
 	}
 
 	// Second, get the data block from this inode.
 	dataBlock, err := puddle.getInodeBlock(path, clientId)
 	if err != nil {
-		return LsReply{false, ""}, err
+		return LsReply{false, ""}, err //fmt.Errorf("Directory is currupt")
 	}
 
 	// Then we get the name of all the block inodes
 	dirInodes, err := puddle.getBlockInodes(path, inode, dataBlock, clientId)
 	if err != nil {
-		return LsReply{false, ""}, err
+		return LsReply{false, ""}, err //fmt.Errorf("Error getting directory contents")
 	}
 
 	elements[0] = "./"
@@ -268,6 +271,12 @@ func (puddle *PuddleNode) mkfile(req *MkfileRequest) (MkfileReply, error) {
 	if err != nil {
 		fmt.Println(err)
 		return reply, err
+	}
+
+	// File we are about to make should not exist.
+	_, err = puddle.getInode(fullPath, clientId)
+	if err == nil {
+		return reply, fmt.Errorf("There already exists a file/dir with that name.")
 	}
 
 	// This is the root node creation.
@@ -494,7 +503,7 @@ func (puddle *PuddleNode) writefile(req *WritefileRequest) (WritefileReply, erro
 	var i uint32
 	for i = 0; i < count; i++ {
 		// Reached limit of a certain block
-		if blockOffset == BLOCK_SIZE-1 {
+		if blockOffset == BLOCK_SIZE {
 			// Save previous block first, then change to next one
 			err = puddle.storeFileBlock(path, blockNo, block, clientId)
 			if err != nil {
@@ -555,6 +564,8 @@ func (puddle *PuddleNode) cat(req *CatRequest) (CatReply, error) {
 
 	blockNo := location / BLOCK_SIZE
 	blockOffset := location % BLOCK_SIZE
+	fmt.Println(location, " : ", BLOCK_SIZE)
+	fmt.Println(blockNo, " : ", blockOffset)
 	block, err := puddle.getFileBlock(path, blockNo, clientId)
 	if err != nil {
 		if err.Error() == "Tapestry error" {
@@ -566,12 +577,14 @@ func (puddle *PuddleNode) cat(req *CatRequest) (CatReply, error) {
 	var i uint32
 	for i = 0; i < count; i++ {
 		// Reached limit of a certain block
-		if blockOffset == BLOCK_SIZE-1 {
+		if blockOffset == BLOCK_SIZE {
 			// Save previous block first, then change to next one
-			err = puddle.storeFileBlock(path, blockNo, block, clientId)
-			if err != nil {
-				return reply, fmt.Errorf("File does not exist")
-			}
+			// err = puddle.storeFileBlock(path, blockNo, block, clientId)
+			//if err != nil {
+			//	return reply, fmt.Errorf("File does not exist")
+			//}
+			fmt.Printf("Changing blocks %v -> %v at count %v, %v\n", blockNo, blockNo+1, i,
+				blockOffset)
 			blockNo++
 			if blockNo == FILES_PER_INODE {
 				break
