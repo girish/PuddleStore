@@ -4,6 +4,10 @@ import (
 	"fmt"
 )
 
+/*
+	Client wrapper to avoid clients to call RPCs directly
+*/
+
 const MAX_RETIRES = 5
 
 type Client struct {
@@ -107,22 +111,22 @@ func (c *Client) Rmdir(path string) (err error) {
 	return nil
 }
 
-func (c *Client) Cat(path string) (err error) {
-	request := MkfileRequest{c.Id, path}
+func (c *Client) Cat(path string, location, count uint32) ([]byte, uint32, error) {
+	request := CatRequest{c.Id, path, location, count}
 
 	remoteAddr := c.PuddleServ
 
-	reply, err := mkfileRPC(&remoteAddr, request)
+	reply, err := catRPC(&remoteAddr, request)
 
 	if err != nil {
 		fmt.Println(err)
-		return
+		return nil, 0, err
 	}
 	if !reply.Ok {
 		fmt.Errorf("Could not create file")
 	}
 
-	return nil
+	return reply.Buffer, reply.Read, nil
 }
 
 func (c *Client) Mkfile(path string) (err error) {
@@ -159,19 +163,19 @@ func (c *Client) Rmfile(path string) (err error) {
 	return nil
 }
 
-func (c *Client) Writefile(path string) (err error) {
-	request := MkfileRequest{c.Id, path}
+func (c *Client) Writefile(path string, location uint32, buf []byte) (uint32, error) {
+	request := WritefileRequest{c.Id, path, location, buf}
 
 	remoteAddr := c.PuddleServ
 
-	reply, err := mkfileRPC(&remoteAddr, request)
+	reply, err := writefileRPC(&remoteAddr, request)
 
 	if err != nil {
-		return
+		return 0, err
 	}
 	if !reply.Ok {
 		fmt.Errorf("Could not create file")
 	}
 
-	return nil
+	return reply.Written, nil
 }

@@ -46,7 +46,7 @@ func main() {
 		"cd":        command{cd, "cd <path>", "change to given directory", 0},
 		"mkdir":     command{mkdir, "mkdir <path>", "make directory", 1},
 		"rmdir":     command{rmdir, "rmdir <path>", "make directory", 1},
-		"cat":       command{cat, "cat <path> <length>", "read a file", 2},
+		"cat":       command{cat, "cat <path> <location> <count>", "read a file", 3},
 		"mkfile":    command{mkfile, "mkfile <path>", "make an empty file", 1},
 		"rmfile":    command{rmfile, "rmfile <path>", "remove a file", 1},
 		"writefile": command{writefile, "writefile <path> <location> <bytes>", "write to an existing file", 3},

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 )
 
 /*
@@ -61,10 +62,20 @@ func rmdir(shell *Shell, args []string) error {
 }
 
 func cat(shell *Shell, args []string) error {
-	err := shell.c.Cat(args[1])
+	location, err := strconv.Atoi(args[2])
+	if err != nil {
+		return err
+	}
+	count, err := strconv.Atoi(args[3])
+	if err != nil {
+		return err
+	}
+	output, read, err := shell.c.Cat(args[1], uint32(location), uint32(count))
 	if err != nil {
 		fmt.Println(err)
 	}
+	fmt.Println(read, "bytes read")
+	fmt.Println(string(output))
 	return nil
 }
 
@@ -85,9 +96,14 @@ func rmfile(shell *Shell, args []string) error {
 }
 
 func writefile(shell *Shell, args []string) error {
-	err := shell.c.Writefile(args[1])
+	location, err := strconv.Atoi(args[2])
+	if err != nil {
+		return err
+	}
+	written, err := shell.c.Writefile(args[1], uint32(location), []byte(args[3]))
 	if err != nil {
 		fmt.Println(err)
 	}
+	fmt.Println(written, "bytes written")
 	return nil
 }

@@ -65,29 +65,12 @@ func Start() (p *PuddleNode, err error) {
 	}
 	// -------------------------------------------------
 
-	/*
-		// vguid := randSeq(5)
-		root := CreateRootInode()
-		// puddlestore.paths["/"] = vguid
-		encodedRoot, err := root.GobEncode()
-		if err != nil {
-			panic(err)
-		}
-		err = tapestry.TapestryStore(puddle.tnodes[0].GetLocalNode(),
-			"/", encodedRoot)
-		if err != nil {
-			panic(err)
-		}*/
-
-	// puddle.rootInode, err = puddle.getInode("/")
-	// -------------------------------------------------
-
 	// RPC server --------------------------------------
 	puddle.server = newPuddlestoreRPCServer(p)
 	puddle.Local = PuddleAddr{puddle.server.listener.Addr().String()}
 	// -------------------------------------------------
 
-	// Create puddle raft client
+	// Create puddle raft client. Persist until raft is settled
 	client, err := CreateClient(puddle.Local)
 	for err != nil {
 		client, err = CreateClient(puddle.Local)
@@ -109,7 +92,6 @@ func Start() (p *PuddleNode, err error) {
 	// -------------------------------------------------
 
 	fmt.Printf("Started puddlestore, listening at %v\n", puddle.server.listener.Addr().String())
-	// -------------------------------------------------
 
 	return
 }

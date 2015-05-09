@@ -149,6 +149,53 @@ func rmfileRPC(remotenode *PuddleAddr, request RmfileRequest) (*RmfileReply, err
 	return &reply, nil
 }
 
+type WritefileRequest struct {
+	ClientId uint64
+	Path     string
+	Location uint32
+	Buffer   []byte
+}
+
+type WritefileReply struct {
+	Ok      bool
+	Written uint32
+}
+
+func writefileRPC(remotenode *PuddleAddr, request WritefileRequest) (*WritefileReply, error) {
+	var reply WritefileReply
+
+	err := makeRemoteCall(remotenode, "WritefileImpl", request, &reply)
+	if err != nil {
+		return nil, err
+	}
+
+	return &reply, nil
+}
+
+type CatRequest struct {
+	ClientId uint64
+	Path     string
+	Location uint32
+	Count    uint32
+}
+
+type CatReply struct {
+	Ok     bool
+	Read   uint32
+	Buffer []byte
+}
+
+func catRPC(remotenode *PuddleAddr, request CatRequest) (*CatReply, error) {
+	var reply CatReply
+
+	err := makeRemoteCall(remotenode, "CatImpl", request, &reply)
+	if err != nil {
+		return nil, err
+	}
+
+	return &reply, nil
+}
+
 /* Helper function to make a call to a remote node */
 func makeRemoteCall(remoteNode *PuddleAddr, method string, req interface{}, rsp interface{}) error {
 	// Dial the server if we don't already have a connection to it

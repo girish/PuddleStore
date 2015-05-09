@@ -79,3 +79,15 @@ func (server *PuddleRPCServer) RmfileImpl(req *RmfileRequest, rep *RmfileReply) 
 	*rep = rvreply
 	return err
 }
+
+func (server *PuddleRPCServer) WritefileImpl(req *WritefileRequest, rep *WritefileReply) error {
+	rvreply, err := server.node.writefile(req)
+	*rep = rvreply
+	return err
+}
+
+func (server *PuddleRPCServer) CatImpl(req *CatRequest, rep *CatReply) error {
+	rvreply, err := server.node.cat(req)
+	*rep = rvreply
+	return err
+}

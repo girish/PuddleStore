@@ -4,7 +4,6 @@ import (
 	"../../raft/raft"
 	"../../tapestry/tapestry"
 	"fmt"
-	"strconv"
 	"strings"
 )
 
@@ -188,13 +187,13 @@ func (puddle *PuddleNode) mkdir(req *MkdirRequest) (MkdirReply, error) {
 		blockHash := tapestry.Hash(blockPath)
 
 		// Save the root Inode indirect block in tapestry
-		puddle.StoreIndirectBlock(fullPath, newDirBlock.bytes, clientId)
+		puddle.storeIndirectBlock(fullPath, newDirBlock.bytes, clientId)
 
 		newDirInode.indirect = hashToGuid(blockHash)
 		fmt.Println(blockHash, "->", newDirInode.indirect)
 
 		// Save the root Inode
-		puddle.StoreInode(fullPath, newDirInode, clientId)
+		puddle.storeInode(fullPath, newDirInode, clientId)
 
 	} else {
 		// Get indirect block from the directory that is going to create
@@ -230,12 +229,12 @@ func (puddle *PuddleNode) mkdir(req *MkdirRequest) (MkdirReply, error) {
 		fmt.Println("\n\n\n\n\n\n", newDirInodeHash, "->", newDirInode.indirect)
 
 		// Save both blocks in tapestry
-		puddle.StoreIndirectBlock(fullPath, newDirBlock.bytes, clientId)
-		puddle.StoreIndirectBlock(dirPath, dirBlock, clientId)
+		puddle.storeIndirectBlock(fullPath, newDirBlock.bytes, clientId)
+		puddle.storeIndirectBlock(dirPath, dirBlock, clientId)
 
 		// Encode both inodes
-		puddle.StoreInode(dirPath, dirInode, clientId)
-		puddle.StoreInode(fullPath, newDirInode, clientId)
+		puddle.storeInode(dirPath, dirInode, clientId)
+		puddle.storeInode(fullPath, newDirInode, clientId)
 	}
 
 	reply.Ok = true
@@ -289,12 +288,12 @@ func (puddle *PuddleNode) mkfile(req *MkfileRequest) (MkfileReply, error) {
 		fmt.Println("\n\n\n\n\n\n", newFileInodeHash, "->", newFileInode.indirect)
 
 		// Save both blocks in tapestry
-		puddle.StoreIndirectBlock(fullPath, newFileBlock.bytes, clientId)
-		puddle.StoreIndirectBlock(dirPath, dirBlock, clientId)
+		puddle.storeIndirectBlock(fullPath, newFileBlock.bytes, clientId)
+		puddle.storeIndirectBlock(dirPath, dirBlock, clientId)
 
 		// Encode both inodes
-		puddle.StoreInode(dirPath, dirInode, clientId)
-		puddle.StoreInode(fullPath, newFileInode, clientId)
+		puddle.storeInode(dirPath, dirInode, clientId)
+		puddle.storeInode(fullPath, newFileInode, clientId)
 
 	}
 
@@ -361,14 +360,14 @@ func (puddle *PuddleNode) rmdir(req *RmdirRequest) (RmdirReply, error) {
 		return reply, err
 	}
 
-	// Store the modified dir block
-	err = puddle.StoreIndirectBlock(dirPath, dirBlock, clientId)
+	// store the modified dir block
+	err = puddle.storeIndirectBlock(dirPath, dirBlock, clientId)
 	if err != nil {
 		return reply, err
 	}
 
-	// Store the modified dir inode
-	err = puddle.StoreInode(dirPath, dirInode, clientId)
+	// store the modified dir inode
+	err = puddle.storeInode(dirPath, dirInode, clientId)
 	if err != nil {
 		return reply, err
 	}
@@ -432,14 +431,14 @@ func (puddle *PuddleNode) rmfile(req *RmfileRequest) (RmfileReply, error) {
 		return reply, err
 	}
 
-	// Store the modified dir block
-	err = puddle.StoreIndirectBlock(dirPath, dirBlock, clientId)
+	// store the modified dir block
+	err = puddle.storeIndirectBlock(dirPath, dirBlock, clientId)
 	if err != nil {
 		return reply, err
 	}
 
-	// Store the modified dir inode
-	err = puddle.StoreInode(dirPath, dirInode, clientId)
+	// store the modified dir inode
+	err = puddle.storeInode(dirPath, dirInode, clientId)
 	if err != nil {
 		return reply, err
 	}
@@ -448,6 +447,152 @@ func (puddle *PuddleNode) rmfile(req *RmfileRequest) (RmfileReply, error) {
 	return reply, nil
 }
 
+func (puddle *PuddleNode) writefile(req *WritefileRequest) (WritefileReply, error) {
+	reply := WritefileReply{}
+
+	path := req.Path
+	// length := len(path)
+	buf := req.Buffer
+	location := req.Location
+	count := uint32(len(buf))
+	clientId := req.ClientId
+
+	if path[0] != '/' {
+		path = puddle.getCurrentDir(clientId) + "/" + path
+	}
+	path = removeExcessSlashes(path)
+
+	inode, err := puddle.getInode(path, clientId)
+	if err != nil {
+		return reply, fmt.Errorf("File does not exist")
+	}
+	if inode.filetype != FILE {
+		return reply, fmt.Errorf("File is a directory")
+	}
+
+	blockNo := location / BLOCK_SIZE
+	blockOffset := location % BLOCK_SIZE
+	block, err := puddle.getFileBlock(path, blockNo, clientId)
+	if err != nil {
+		if err.Error() == "Tapestry error" {
+			return reply, err
+		}
+		block = make([]byte, BLOCK_SIZE)
+	}
+
+	var i uint32
+	for i = 0; i < count; i++ {
+		// Reached limit of a certain block
+		if blockOffset == BLOCK_SIZE-1 {
+			// Save previous block first, then change to next one
+			err = puddle.storeFileBlock(path, blockNo, block, clientId)
+			if err != nil {
+				return reply, fmt.Errorf("File does not exist")
+			}
+			blockNo++
+			if blockNo == FILES_PER_INODE {
+				break
+			}
+			block, err = puddle.getFileBlock(path, blockNo, clientId)
+			if err != nil {
+				if err.Error() == "Tapestry error" {
+					return reply, err
+				}
+				block = make([]byte, BLOCK_SIZE)
+			}
+			blockOffset = 0
+		}
+
+		block[blockOffset] = buf[i]
+		blockOffset++
+	}
+
+	if i == count {
+		err = puddle.storeFileBlock(path, blockNo, block, clientId)
+		if err != nil {
+			return reply, fmt.Errorf("File does not exist")
+		}
+	}
+
+	reply.Ok = true
+	reply.Written = i
+	return reply, nil
+}
+
+func (puddle *PuddleNode) cat(req *CatRequest) (CatReply, error) {
+	reply := CatReply{}
+
+	path := req.Path
+	// length := len(path)
+	buf := make([]byte, BLOCK_SIZE*FILES_PER_INODE) // Set buf to max len possible
+	location := req.Location
+	count := req.Count
+	clientId := req.ClientId
+
+	if path[0] != '/' {
+		path = puddle.getCurrentDir(clientId) + "/" + path
+	}
+	path = removeExcessSlashes(path)
+
+	inode, err := puddle.getInode(path, clientId)
+	if err != nil {
+		return reply, fmt.Errorf("File does not exist")
+	}
+	if inode.filetype != FILE {
+		return reply, fmt.Errorf("File is a directory")
+	}
+
+	blockNo := location / BLOCK_SIZE
+	blockOffset := location % BLOCK_SIZE
+	block, err := puddle.getFileBlock(path, blockNo, clientId)
+	if err != nil {
+		if err.Error() == "Tapestry error" {
+			return reply, err
+		}
+		block = make([]byte, BLOCK_SIZE)
+	}
+
+	var i uint32
+	for i = 0; i < count; i++ {
+		// Reached limit of a certain block
+		if blockOffset == BLOCK_SIZE-1 {
+			// Save previous block first, then change to next one
+			err = puddle.storeFileBlock(path, blockNo, block, clientId)
+			if err != nil {
+				return reply, fmt.Errorf("File does not exist")
+			}
+			blockNo++
+			if blockNo == FILES_PER_INODE {
+				break
+			}
+			block, err = puddle.getFileBlock(path, blockNo, clientId)
+			if err != nil {
+				if err.Error() == "Tapestry error" {
+					return reply, err
+				}
+				block = make([]byte, BLOCK_SIZE)
+			}
+			blockOffset = 0
+		}
+
+		buf[i] = block[blockOffset]
+		blockOffset++
+	}
+
+	if i == count {
+		err = puddle.storeFileBlock(path, blockNo, block, clientId)
+		if err != nil {
+			return reply, fmt.Errorf("File does not exist")
+		}
+	}
+
+	reply.Ok = true
+	reply.Read = i
+	reply.Buffer = buf
+	return reply, nil
+}
+
+// Helper method used in 'ls'
 func (puddle *PuddleNode) getBlockInodes(path string, inode *Inode,
 	data []byte, id uint64) ([]*Inode, error) {
 
@@ -513,88 +658,6 @@ func (puddle *PuddleNode) dir_namev(pathname string, id uint64) (*Inode, string,
 	return dirInode, name, fullPath, dirPath, nil
 }
 
-func removeExcessSlashes(path string) string {
-	var firstNonSlash, lastNonSlash, start int
-
-	onlySlashes := true
-	str := path
-
-	length := len(path)
-
-	// Nothing to do
-	if path[0] != '/' && path[length-1] != '/' {
-		return str
-	}
-
-	// Get the first non slash
-	for i := 0; i < length; i++ {
-		if str[i] != '/' {
-			onlySlashes = false
-			firstNonSlash = i
-			break
-		}
-	}
-
-	// Get the last non slash
-	for i := length - 1; i >= 0; i-- {
-		if str[i] != '/' {
-			lastNonSlash = i
-			break
-		}
-	}
-
-	// Guaranteed to be the root path
-	if onlySlashes {
-		str = "/"
-		return str
-	} else {
-		length = lastNonSlash - firstNonSlash + 1
-		if str[0] == '/' {
-			start = firstNonSlash - 1
-			length++
-		} else {
-			start = 0
-		}
-
-		str = path[start : start+length]
-	}
-
-	length = len(str)
-	for i := 0; i < length; i++ {
-		if i+1 == length {
-			break
-		}
-
-		if str[i] == '/' && str[i+1] == '/' {
-			str = str[:i] + str[i+1:]
-			length -= 1
-			i -= 1
-		}
-	}
-
-	return str
-}
-
-func IdIntoByte(bytes []byte, id *tapestry.ID, start int) {
-	for i := 0; i < tapestry.DIGITS; i++ {
-		bytes[start+i] = byte(id[i])
-	}
-}
-
-func ByteIntoAguid(bytes []byte, start uint32) Aguid {
-	aguid := ""
-	for i := uint32(0); i < tapestry.DIGITS; i++ {
-		aguid += strconv.FormatUint(uint64(bytes[start+i]), tapestry.BASE)
-	}
-	return Aguid(strings.ToUpper(aguid))
-}
-
-func MakeZeros(bytes []byte, start uint32) {
-	for i := uint32(0); i < tapestry.DIGITS; i++ {
-		bytes[start+i] = 0
-	}
-}
-
 // Removes an entry from a directory block. If it not the last entry,
 // It moves and replaces the last entry with the removing entry.
 func RemoveEntryFromBlock(bytes []byte, start uint32, size uint32) {
@@ -605,23 +668,4 @@ func RemoveEntryFromBlock(bytes []byte, start uint32, size uint32) {
 			bytes[start+i] = bytes[size-tapestry.DIGITS+i]
 		}
 	}
-}
-
-func makeString(elements [FILES_PER_INODE + 2]string) string {
-	ret := ""
-	for _, s := range elements {
-		if s == "" {
-			break
-		}
-		ret += "\t" + s
-	}
-	return ret
-}
-
-func hashToGuid(id tapestry.ID) Guid {
-	s := ""
-	for i := 0; i < tapestry.DIGITS; i++ {
-		s += strconv.FormatUint(uint64(byte(id[i])), tapestry.BASE)
-	}
-	return Guid(strings.ToUpper(s))
 }
